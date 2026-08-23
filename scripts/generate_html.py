@@ -157,8 +157,11 @@ def generate(template_path: Path, quota_path: Path, aa_path: Path, output_path: 
     aa_doc = load_json(aa_path)
     reference, x_max, base_data, quota_snapshots, dates = build_payload(quota_doc, aa_doc)
 
+    # normalization_reference from quota JSON (model + value) for dynamic foot text
+    norm_ref = quota_doc.get("normalization_reference", {"model": "配额最多者", "requests_per_5h": reference})
     replacements = {
         "__QUOTA_REFERENCE__": json.dumps(reference),
+        "__NORMALIZATION_REFERENCE__": json.dumps(norm_ref, ensure_ascii=False),
         "__X_MAX__": json.dumps(x_max),
         "__BASE_DATA__": json.dumps(base_data, ensure_ascii=False, indent=2),
         "__QUOTA_SNAPSHOTS__": json.dumps(quota_snapshots, ensure_ascii=False, indent=2),
