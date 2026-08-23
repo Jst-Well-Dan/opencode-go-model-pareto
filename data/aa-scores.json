@@ -1,0 +1,118 @@
+{
+  "metric": "AA Intelligence Index",
+  "source": "https://aihot.virxact.com/leaderboard/methodology",
+  "models": [
+    {
+      "model": "Grok 4.5",
+      "aa_model_id": "grok-4-5",
+      "intelligence": 55.8
+    },
+    {
+      "model": "GPT 5.6 Luna",
+      "aa_model_id": "gpt-5-6-luna",
+      "intelligence": 52.3
+    },
+    {
+      "model": "GLM-5.3",
+      "aa_model_id": "glm-5-3",
+      "intelligence": 59.5
+    },
+    {
+      "model": "GLM-5.2",
+      "aa_model_id": "glm-5-2",
+      "intelligence": 52.6
+    },
+    {
+      "model": "GLM-5.1",
+      "aa_model_id": "glm-5-1",
+      "intelligence": 41.0
+    },
+    {
+      "model": "Kimi K3",
+      "aa_model_id": "kimi-k3",
+      "intelligence": 59.7
+    },
+    {
+      "model": "Kimi K2.7 Code",
+      "aa_model_id": "kimi-k2-7-code",
+      "intelligence": 43.0
+    },
+    {
+      "model": "Kimi K2.6",
+      "aa_model_id": "kimi-k2-6",
+      "intelligence": 45.1
+    },
+    {
+      "model": "MiMo-V2.5",
+      "aa_model_id": "mimo-v2-5-0424",
+      "intelligence": 38.0
+    },
+    {
+      "model": "MiMo-V2.5-Pro",
+      "aa_model_id": "mimo-v2-5-pro",
+      "intelligence": 42.9
+    },
+    {
+      "model": "MiniMax M3",
+      "aa_model_id": "minimax-m3",
+      "intelligence": 45.4
+    },
+    {
+      "model": "MiniMax M2.7",
+      "aa_model_id": "minimax-m2-7",
+      "intelligence": 38.9
+    },
+    {
+      "model": "Muse Spark 1.2 Contributor",
+      "aa_model_id": "muse-spark-1-2",
+      "intelligence": 56.8
+    },
+    {
+      "model": "Qwen3.8 Max",
+      "aa_model_id": "qwen3-8-max",
+      "intelligence": 58.1
+    },
+    {
+      "model": "Qwen3.7 Max",
+      "aa_model_id": "qwen3-7-max",
+      "intelligence": 46.7
+    },
+    {
+      "model": "Qwen3.7 Plus",
+      "aa_model_id": "qwen3-7-plus",
+      "intelligence": 39.4
+    },
+    {
+      "model": "Qwen3.6 Plus",
+      "aa_model_id": "qwen3-6-plus",
+      "intelligence": 40.5
+    },
+    {
+      "model": "DeepSeek V4 Pro",
+      "aa_model_id": "deepseek-v4-pro",
+      "intelligence": 53.2
+    },
+    {
+      "model": "DeepSeek V4 Flash",
+      "aa_model_id": "deepseek-v4-flash",
+      "intelligence": 51.8
+    },
+    {
+      "model": "Hy3",
+      "aa_model_id": "hy3",
+      "intelligence": 42.2
+    },
+    {
+      "model": "DeepSeek V4 Flash Vision Exp",
+      "aa_model_id": null,
+      "intelligence": null
+    },
+    {
+      "model": "Ox Alpha Free",
+      "aa_model_id": null,
+      "intelligence": null
+    }
+  ],
+  "source_url": "https://aihot.virxact.com/leaderboard/methodology",
+  "last_fetched_at": "2026-08-23T03:48:12.953833+00:00"
+}

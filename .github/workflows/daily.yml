@@ -1,0 +1,45 @@
+name: Daily update
+
+on:
+  schedule:
+    - cron: "0 1 * * *"  # 每天 09:00 CST (01:00 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Fetch latest data and regenerate HTML
+        run: python scripts/fetch_data.py
+        # 抓取失败时不覆盖文件；此处让 workflow 静默跳过而非标红
+        # 如需失败告警，删掉下面的 continue-on-error 并改用默认行为
+        continue-on-error: false
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add data/quota-snapshots.json data/aa-scores.json opencode-go-model-pareto.html
+            # 若 HTML 未变化（仅时间戳变）也一并提交，确保 Pages 触发部署
+            git commit -m "chore(data): daily snapshot $(date -u +%Y-%m-%d)"
+            git push
+          else
+            echo "No changes to commit."
+          fi
