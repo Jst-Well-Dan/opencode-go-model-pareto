@@ -238,6 +238,10 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
     updated_quota["source_url"] = OPENCODE_URL
     updated_quota["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
     updated_quota.setdefault("snapshots", {})
+    # 将此前“今日”快照降为无标签（历史），避免出现多个“今日”
+    for d, snap in list(updated_quota["snapshots"].items()):
+        if d != snapshot_date and snap.get("label") == "今日":
+            snap["label"] = ""
     updated_quota["snapshots"][snapshot_date] = {
         "label": "今日",
         "models": snapshot_models,

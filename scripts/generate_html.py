@@ -144,7 +144,12 @@ def build_payload(quota_doc: dict[str, Any], aa_doc: dict[str, Any]) -> tuple[in
 def make_date_options(quota_doc: dict[str, Any], dates: list[str]) -> str:
     options = []
     for index, date in enumerate(dates):
-        label = quota_doc["snapshots"][date].get("label", "")
+        raw_label = quota_doc["snapshots"][date].get("label", "")
+        # 仅最新快照显示“今日”，历史快照的“今日/历史”旧标签视为无后缀，避免出现两个“今日”
+        if index == 0:
+            label = "今日" if raw_label in ("", "今日", "历史") else raw_label
+        else:
+            label = "" if raw_label in ("今日", "历史") else raw_label
         suffix = f" · {label}" if label else ""
         selected = " selected" if index == 0 else ""
         options.append(f'<option value="{html.escape(date, quote=True)}"{selected}>{html.escape(date + suffix)}</option>')
