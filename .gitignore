@@ -5,3 +5,6 @@ __pycache__/
 Thumbs.db
 cards/_verify_*.png
 test/
+
+# 本地分享卡片，不提交
+cards/
