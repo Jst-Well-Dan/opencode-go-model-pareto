@@ -32,7 +32,7 @@
 <main>
 <header class="site-header"><div><h1 id="pageTitle">OpenCode Go 模型：智力 × 配额成本</h1><p class="lead" id="pageLead">纵轴为 AA Intelligence Index（越高越好），横轴为相对配额成本（越低越好）。头像右下角徽章表示模态（M / T），橙色外环表示帕累托最优；橙色连线连接帕累托最优集合。</p></div><button id="langBtn" type="button" aria-label="Switch language">English</button></header>
 <section class="panel" aria-labelledby="chart-title">
-<div class="chart-head"><div><div class="eyebrow" id="eyebrow">Pareto optimal</div><div class="chart-title" id="chart-title">模型效能分布</div></div><div class="controls" aria-label="图表设置" id="controlsAria"><div class="control-group"><label for="dateSelect" id="dateLabel">数据日期</label><select id="dateSelect" aria-label="选择用量数据日期"><option value="2026-08-23" selected>2026-08-23 · 今日</option><option value="2026-08-20-hy3x8-preview">2026-08-20-hy3x8-preview · Hy3×8 预览</option><option value="2026-08-20">2026-08-20</option><option value="2026-08-18">2026-08-18</option><option value="2026-08-17">2026-08-17</option></select></div><div class="control-group"><span id="scaleLabel">横轴刻度</span><button id="logBtn" class="active" type="button" aria-pressed="true">对数</button><button id="linearBtn" type="button" aria-pressed="false">线性</button></div></div></div>
+<div class="chart-head"><div><div class="eyebrow" id="eyebrow">Pareto optimal</div><div class="chart-title" id="chart-title">模型效能分布</div></div><div class="controls" aria-label="图表设置" id="controlsAria"><div class="control-group"><label for="dateSelect" id="dateLabel">数据日期</label><select id="dateSelect" aria-label="选择用量数据日期"><option value="2026-08-24" selected>2026-08-24 · 今日</option><option value="2026-08-23">2026-08-23</option><option value="2026-08-20-hy3x8-preview">2026-08-20-hy3x8-preview · Hy3×8 预览</option><option value="2026-08-20">2026-08-20</option><option value="2026-08-18">2026-08-18</option><option value="2026-08-17">2026-08-17</option></select></div><div class="control-group"><span id="scaleLabel">横轴刻度</span><button id="logBtn" class="active" type="button" aria-pressed="true">对数</button><button id="linearBtn" type="button" aria-pressed="false">线性</button></div></div></div>
 <div class="timeline" id="timeline" aria-label="时间轴"><button id="prevBtn" class="pill" type="button" aria-label="上一日期">◀</button><input type="range" id="dateRange" aria-label="拖动切换日期"><button id="nextBtn" class="pill" type="button" aria-label="下一日期">▶</button><span class="date-chip" id="dateChip"></span></div>
 <div class="legend" aria-label="图例" id="legendAria"><span class="legend-key"><i class="ring-key"></i><span id="legendParetoText">橙色外环：帕累托最优</span></span><span class="legend-key"><i class="line-key"></i><span id="legendLineText">帕累托最优连线</span></span><span class="legend-key"><i class="badge-key multi">M</i><span id="legendMultiText">多模态</span></span><span class="legend-key"><i class="badge-key text">T</i><span id="legendTextText">纯文字</span></span><span class="legend-key"><i class="ref-key"></i><span id="legendRefText">虚线头像：无 AA 分（横轴参考）</span></span></div>
 <p class="scroll-hint" id="scrollHint">← 左右滑动查看完整图表 →</p>
@@ -391,6 +391,118 @@ const baseData=[
   }
 ];
 const quotaSnapshots={
+  "2026-08-24": [
+    {
+      "requests": 120,
+      "weekly": 300,
+      "monthly": 600
+    },
+    {
+      "requests": 2050,
+      "weekly": 5100,
+      "monthly": 10250
+    },
+    {
+      "requests": 220,
+      "weekly": 540,
+      "monthly": 1080
+    },
+    {
+      "requests": 880,
+      "weekly": 2150,
+      "monthly": 4300
+    },
+    {
+      "requests": 880,
+      "weekly": 2150,
+      "monthly": 4300
+    },
+    {
+      "requests": 110,
+      "weekly": 250,
+      "monthly": 490
+    },
+    {
+      "requests": 1350,
+      "weekly": 3380,
+      "monthly": 6750
+    },
+    {
+      "requests": 1150,
+      "weekly": 2880,
+      "monthly": 5750
+    },
+    {
+      "requests": 30100,
+      "weekly": 75200,
+      "monthly": 150400
+    },
+    {
+      "requests": 3250,
+      "weekly": 8150,
+      "monthly": 16300
+    },
+    {
+      "requests": 3200,
+      "weekly": 8000,
+      "monthly": 16000
+    },
+    {
+      "requests": 3400,
+      "weekly": 8500,
+      "monthly": 17000
+    },
+    {
+      "requests": 45300,
+      "weekly": 113300,
+      "monthly": 226600
+    },
+    {
+      "requests": 160,
+      "weekly": 400,
+      "monthly": 810
+    },
+    {
+      "requests": 340,
+      "weekly": 840,
+      "monthly": 1690
+    },
+    {
+      "requests": 4300,
+      "weekly": 10800,
+      "monthly": 21600
+    },
+    {
+      "requests": 3300,
+      "weekly": 8200,
+      "monthly": 16300
+    },
+    {
+      "requests": 1050,
+      "weekly": 2600,
+      "monthly": 5200
+    },
+    {
+      "requests": 7600,
+      "weekly": 18900,
+      "monthly": 37800
+    },
+    {
+      "requests": 4300,
+      "weekly": 10750,
+      "monthly": 21500
+    },
+    {
+      "requests": 3800,
+      "weekly": 9450,
+      "monthly": 18900
+    },
+    {
+      "requests": null,
+      "weekly": null,
+      "monthly": null
+    }
+  ],
   "2026-08-23": [
     {
       "requests": 120,
