@@ -630,7 +630,7 @@
       ]
     },
     "2026-08-24": {
-      "label": "今日",
+      "label": "",
       "models": [
         {
           "model": "Grok 4.5",
@@ -765,8 +765,151 @@
           "requests_per_month": null
         }
       ]
+    },
+    "2026-08-25": {
+      "label": "今日",
+      "models": [
+        {
+          "model": "Grok 4.5",
+          "requests_per_5h": 120,
+          "requests_per_week": 300,
+          "requests_per_month": 600
+        },
+        {
+          "model": "GPT 5.6 Luna",
+          "requests_per_5h": 2050,
+          "requests_per_week": 5100,
+          "requests_per_month": 10250
+        },
+        {
+          "model": "GLM-5.3",
+          "requests_per_5h": 220,
+          "requests_per_week": 540,
+          "requests_per_month": 1080
+        },
+        {
+          "model": "GLM-5.2",
+          "requests_per_5h": 880,
+          "requests_per_week": 2150,
+          "requests_per_month": 4300
+        },
+        {
+          "model": "GLM-5.1",
+          "requests_per_5h": 880,
+          "requests_per_week": 2150,
+          "requests_per_month": 4300
+        },
+        {
+          "model": "Kimi K3",
+          "requests_per_5h": 110,
+          "requests_per_week": 250,
+          "requests_per_month": 490
+        },
+        {
+          "model": "Kimi K2.7 Code",
+          "requests_per_5h": 1350,
+          "requests_per_week": 3380,
+          "requests_per_month": 6750
+        },
+        {
+          "model": "Kimi K2.6",
+          "requests_per_5h": 1150,
+          "requests_per_week": 2880,
+          "requests_per_month": 5750
+        },
+        {
+          "model": "MiMo-V2.5",
+          "requests_per_5h": 30100,
+          "requests_per_week": 75200,
+          "requests_per_month": 150400
+        },
+        {
+          "model": "MiMo-V2.5-Pro",
+          "requests_per_5h": 3250,
+          "requests_per_week": 8150,
+          "requests_per_month": 16300
+        },
+        {
+          "model": "MiniMax M3",
+          "requests_per_5h": 3200,
+          "requests_per_week": 8000,
+          "requests_per_month": 16000
+        },
+        {
+          "model": "MiniMax M2.7",
+          "requests_per_5h": 3400,
+          "requests_per_week": 8500,
+          "requests_per_month": 17000
+        },
+        {
+          "model": "Muse Spark 1.2 Contributor",
+          "requests_per_5h": 45300,
+          "requests_per_week": 113300,
+          "requests_per_month": 226600
+        },
+        {
+          "model": "Qwen3.8 Max",
+          "requests_per_5h": 160,
+          "requests_per_week": 400,
+          "requests_per_month": 810
+        },
+        {
+          "model": "Qwen3.7 Max",
+          "requests_per_5h": 340,
+          "requests_per_week": 840,
+          "requests_per_month": 1690
+        },
+        {
+          "model": "Qwen3.7 Plus",
+          "requests_per_5h": 4300,
+          "requests_per_week": 10800,
+          "requests_per_month": 21600
+        },
+        {
+          "model": "Qwen3.6 Plus",
+          "requests_per_5h": 3300,
+          "requests_per_week": 8200,
+          "requests_per_month": 16300
+        },
+        {
+          "model": "DeepSeek V4 Pro",
+          "requests_per_5h": 1050,
+          "requests_per_week": 2600,
+          "requests_per_month": 5200
+        },
+        {
+          "model": "DeepSeek V4 Flash",
+          "requests_per_5h": 7600,
+          "requests_per_week": 18900,
+          "requests_per_month": 37800
+        },
+        {
+          "model": "Hy3",
+          "requests_per_5h": 4300,
+          "requests_per_week": 10750,
+          "requests_per_month": 21500
+        },
+        {
+          "model": "DeepSeek V4 Flash Vision Exp",
+          "requests_per_5h": 3800,
+          "requests_per_week": 9450,
+          "requests_per_month": 18900
+        },
+        {
+          "model": "Ox Alpha Free",
+          "requests_per_5h": null,
+          "requests_per_week": null,
+          "requests_per_month": null
+        },
+        {
+          "model": "LongCat-2.0",
+          "requests_per_5h": 11400,
+          "requests_per_week": 28600,
+          "requests_per_month": 57200
+        }
+      ]
     }
   },
   "source_url": "https://opencode.ai/docs/zh-cn/go/",
-  "last_fetched_at": "2026-08-24T02:23:59.036112+00:00"
+  "last_fetched_at": "2026-08-25T07:44:29.004027+00:00"
 }

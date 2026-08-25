@@ -111,8 +111,13 @@
       "model": "Ox Alpha Free",
       "aa_model_id": null,
       "intelligence": null
+    },
+    {
+      "model": "LongCat-2.0",
+      "aa_model_id": null,
+      "intelligence": null
     }
   ],
   "source_url": "https://aihot.virxact.com/leaderboard/methodology",
-  "last_fetched_at": "2026-08-24T02:23:59.036145+00:00"
+  "last_fetched_at": "2026-08-25T07:44:29.004048+00:00"
 }

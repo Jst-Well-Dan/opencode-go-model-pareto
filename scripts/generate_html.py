@@ -44,6 +44,7 @@ MODEL_META = {
     "DeepSeek V4 Flash Vision Exp": {"brand": "deepseek", "modality": "多模态"},
     "Hy3": {"brand": "hunyuan", "modality": "纯文字"},
     "Ox Alpha Free": {"brand": "ox", "modality": "纯文字"},
+    "LongCat-2.0": {"brand": "longcat", "modality": "多模态"},
 }
 
 

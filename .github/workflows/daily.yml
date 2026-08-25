@@ -15,7 +15,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,10 +26,15 @@ jobs:
           python-version: "3.13"
 
       - name: Fetch latest data and regenerate HTML
-        run: python scripts/fetch_data.py
-        # 抓取失败时不覆盖文件；此处让 workflow 静默跳过而非标红
-        # 如需失败告警，删掉下面的 continue-on-error 并改用默认行为
-        continue-on-error: false
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 60
+          retry_on: error
+          command: python scripts/fetch_data.py
+        # 已启用 workflow 级重试（3 次 × 间隔 60s）应对 504 瞬时故障
+        # 如需静默跳过而非标红，可改回 run + continue-on-error: true
 
       - name: Commit and push if changed
         run: |

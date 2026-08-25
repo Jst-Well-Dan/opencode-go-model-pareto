@@ -120,7 +120,8 @@ class AARowParser(HTMLParser):
                 self._row = None
 
 
-def fetch(url: str, retries: int = 3, timeout: int = 30) -> str:
+def fetch(url: str, retries: int = 5, timeout: int = 45) -> str:
+    import random
     last_error: Exception | None = None
     for attempt in range(retries):
         try:
@@ -140,8 +141,17 @@ def fetch(url: str, retries: int = 3, timeout: int = 30) -> str:
                 return payload.decode(charset, errors="replace")
         except (HTTPError, URLError, TimeoutError, ValueError, OSError) as error:
             last_error = error
-            if attempt + 1 < retries:
-                time.sleep(2**attempt)
+            # 5xx (含 504) 属瞬时故障，值得更长退避；4xx 非重试或短退避
+            status = getattr(error, "code", None)
+            is_retryable_5xx = isinstance(error, HTTPError) and status is not None and 500 <= status < 600
+            is_timeout = isinstance(error, (TimeoutError, URLError)) or "timed out" in str(error).lower()
+            if attempt + 1 >= retries:
+                break
+            # 指数退避 + 抖动：5xx/超时用 4s,8s,16s,32s 档位，其它用 2s,4s,8s
+            base = 4 * (2**attempt) if (is_retryable_5xx or is_timeout) else 2**attempt
+            sleep_s = min(60, base + random.uniform(0, 1))
+            print(f"fetch {url} failed (attempt {attempt+1}/{retries}): {error} (status={status}), retry in {sleep_s:.1f}s", file=sys.stderr)
+            time.sleep(sleep_s)
     raise RuntimeError(f"failed to fetch {url} after {retries} attempts: {last_error}")
 
 
