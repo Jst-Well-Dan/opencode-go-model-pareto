@@ -24,13 +24,20 @@
 .foot{margin:18px 3px 0;color:#718096;font-size:.77rem}
 .site-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
 .site-header>div{flex:1;min-width:260px}
+.header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.github-link{display:inline-flex;align-items:center;gap:6px;border:1px solid #cbd5e1;background:#fff;color:#334155;padding:6px 12px;border-radius:999px;font-size:.84rem;font-weight:650;text-decoration:none}
+.github-link:hover{background:#f1f5f9;border-color:#94a3b8;color:#0f172a}
+.github-link svg{width:16px;height:16px;flex:none}
+.foot a.github{color:#0f766e;font-weight:650;border-bottom:none;background:#f0fdfa;padding:2px 8px;border-radius:999px;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.foot a.github:hover{background:#ccfbf1}
+.foot .github svg{width:14px;height:14px}
 @media(max-width:760px){main{width:min(100% - 18px,1180px);margin-top:20px}.chart-head{display:block}.controls{margin-top:12px;flex-wrap:wrap;white-space:normal}.below{grid-template-columns:1fr}.scroll-hint{display:block}.chart-wrap{overflow-x:auto;overscroll-behavior-inline:contain}.chart{min-width:720px;min-height:0}.legend{gap:10px}.summary,.missing{padding:17px}.site-header{flex-direction:column}#langBtn{align-self:flex-start}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <main>
-<header class="site-header"><div><h1 id="pageTitle">OpenCode Go 模型：智力 × 配额成本</h1><p class="lead" id="pageLead">纵轴为 AA Intelligence Index（越高越好），横轴为相对配额成本（越低越好）。头像右下角徽章表示模态（M / T），橙色外环表示帕累托最优；橙色连线连接帕累托最优集合。</p></div><button id="langBtn" type="button" aria-label="Switch language">English</button></header>
+<header class="site-header"><div><h1 id="pageTitle">OpenCode Go 模型：智力 × 配额成本</h1><p class="lead" id="pageLead">纵轴为 AA Intelligence Index（越高越好），横轴为相对配额成本（越低越好）。头像右下角徽章表示模态（M / T），橙色外环表示帕累托最优；橙色连线连接帕累托最优集合。</p></div><div class="header-actions"><a class="github-link" href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" target="_blank" rel="noopener" aria-label="GitHub repository"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span id="githubText">GitHub</span></a><button id="langBtn" type="button" aria-label="Switch language">English</button></div></header>
 <section class="panel" aria-labelledby="chart-title">
 <div class="chart-head"><div><div class="eyebrow" id="eyebrow">Pareto optimal</div><div class="chart-title" id="chart-title">模型效能分布</div></div><div class="controls" aria-label="图表设置" id="controlsAria"><div class="control-group"><label for="dateSelect" id="dateLabel">数据日期</label><select id="dateSelect" aria-label="选择用量数据日期"><option value="2026-08-25" selected>2026-08-25 · 今日</option><option value="2026-08-24">2026-08-24</option><option value="2026-08-23">2026-08-23</option><option value="2026-08-20-hy3x8-preview">2026-08-20-hy3x8-preview · Hy3×8 预览</option><option value="2026-08-20">2026-08-20</option><option value="2026-08-18">2026-08-18</option><option value="2026-08-17">2026-08-17</option></select></div><div class="control-group"><span id="scaleLabel">横轴刻度</span><button id="logBtn" class="active" type="button" aria-pressed="true">对数</button><button id="linearBtn" type="button" aria-pressed="false">线性</button></div></div></div>
 <div class="timeline" id="timeline" aria-label="时间轴"><button id="prevBtn" class="pill" type="button" aria-label="上一日期">◀</button><input type="range" id="dateRange" aria-label="拖动切换日期"><button id="nextBtn" class="pill" type="button" aria-label="下一日期">▶</button><span class="date-chip" id="dateChip"></span></div>
@@ -42,7 +49,7 @@
 <section class="panel summary" aria-labelledby="summary-title"><h2 id="summary-title">帕累托最优解（按成本由低到高）</h2><div class="cards" id="cards"></div></section>
 <aside class="panel missing" id="missingPanel"><h2 id="missingTitle">缺失数据</h2><div class="missing-row" id="missingRow"></div><p id="missingDesc1">AA Index 列表截至 <strong id="missingDate">2026-08-18</strong> 无匹配条目，因此智力指数为空；其相对成本已在图表横轴以虚线头像标注位置。</p><p id="missingDesc2">待指标补齐后方可判断是否属于帕累托最优集合。</p></aside>
 </div>
-<p class="foot" id="footText"><span id="footPrefix">数据来源：OpenCode Go 用量快照与 AA Index 评分 JSON。相对配额成本以配额最多者 = 1.0 为基准（当前 </span><span id="footRef"></span><span id="footSuffix">）；用量日期可通过上方时间轴/下拉切换，图表数据与徽标均已嵌入本文件，无需联网。</span></p>
+<p class="foot" id="footText"><span id="footPrefix">数据来源：OpenCode Go 用量快照与 AA Index 评分 JSON。相对配额成本以配额最多者 = 1.0 为基准（当前 </span><span id="footRef"></span><span id="footSuffix">）；用量日期可通过上方时间轴/下拉切换，图表数据与徽标均已嵌入本文件，无需联网。</span> <a class="github" href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span id="githubRepo">GitHub: Jst-Well-Dan/opencode-go-model-pareto</span></a></p>
 </main>
 <script>
 "use strict";

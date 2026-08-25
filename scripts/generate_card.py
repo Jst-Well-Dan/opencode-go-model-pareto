@@ -251,9 +251,9 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 <div class="foot">
   <div>
     数据来源：<a href="https://opencode.ai/docs/zh-cn/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 相对成本以配额最多者为 1.0<br>
-    生成时间 {date} · 已嵌入全部数据，无需联网 · <span style="color:#64748b">opencode-go-model-pareto.html</span>
+    生成时间 {date} · 已嵌入全部数据，无需联网 · <span style="color:#64748b">opencode-go-model-pareto.html</span> · <a href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" style="color:#0f766e;font-weight:650;text-decoration:none;border-bottom:1px dashed #99f6e4">GitHub: Jst-Well-Dan/opencode-go-model-pareto</a>
   </div>
-  <div class="hash"><span>#OpenCodeGo</span><span>#帕累托最优</span><span>#AI模型</span></div>
+  <div class="hash"><span>#OpenCodeGo</span><span>#帕累托最优</span><span>#AI模型</span><span style="background:#0f172a;color:#fff;border-color:#0f172a">GitHub: Jst-Well-Dan/opencode-go-model-pareto</span></div>
 </div>
 </div>
 </div>
