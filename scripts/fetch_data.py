@@ -244,6 +244,42 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
             "requests_per_month": row["requests_per_month"],
         })
 
+    # --- 去重判定：若配额与 AA 均与最新快照完全一致，则不新建当日快照 ---
+    # 需在变更前捕获 AA 旧值用于对比
+    before_aa_intel = {row.get("model"): row.get("intelligence") for row in existing_aa}
+    # 预计算 AA 更新后的值（不直接修改原列表，用于对比）
+    would_update_aa = False
+    for row in existing_aa:
+        slug = row.get("aa_model_id")
+        if slug and slug in aa_scores:
+            if row.get("intelligence") != aa_scores[slug]:
+                would_update_aa = True
+                break
+    # 若新增模型则必然视为变化
+    quota_identical = False
+    if not added and snapshot_date != latest_date:
+        latest_models = existing_snapshots[latest_date].get("models")
+        quota_identical = snapshot_models == latest_models
+        aa_identical = not would_update_aa
+        if quota_identical and aa_identical:
+            print(f"No change vs {latest_date}, skipping snapshot {snapshot_date} (deduplicated)")
+            updated_quota = dict(quota_doc)
+            updated_quota["source_url"] = OPENCODE_URL
+            updated_quota["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
+            # 仍更新基准（配额未变，基准不变，但保持一致）
+            tracked_rows = [row for row in quota_rows if row["requests_per_5h"] is not None]
+            reference_row = max(tracked_rows, key=lambda row: row["requests_per_5h"])
+            updated_quota["normalization_reference"] = {
+                "model": reference_row["model"],
+                "requests_per_5h": reference_row["requests_per_5h"],
+            }
+            updated_aa = dict(aa_doc)
+            updated_aa["source_url"] = AA_URL
+            updated_aa["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
+            # 仍需将 AA 的内存更新落盘（若有新增模型，即使配额相同也需落盘）
+            # 此处无新增且无 AA 变化，直接返回
+            return updated_quota, updated_aa
+
     updated_quota = dict(quota_doc)
     updated_quota["source_url"] = OPENCODE_URL
     updated_quota["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
