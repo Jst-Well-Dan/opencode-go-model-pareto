@@ -16,6 +16,9 @@ jobs:
   update:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: github-pages
+    env:
+      ARTIFICIAL_ANALYSIS_API_KEY: ${{ secrets.ARTIFICIAL_ANALYSIS_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,7 +36,8 @@ jobs:
           retry_wait_seconds: 60
           retry_on: error
           command: python scripts/fetch_data.py
-        # 已启用 workflow 级重试（3 次 × 间隔 60s）应对 504 瞬时故障
+        # 官方 Data API 需免费 Key（secrets.ARTIFICIAL_ANALYSIS_API_KEY），解析失败直接抛错
+        # 失败时 GitHub 会自动通过 Actions 失败通知邮件提醒 Watch 者（无需额外 SMTP）
         # 如需静默跳过而非标红，可改回 run + continue-on-error: true
 
       - name: Commit and push if changed
@@ -41,7 +45,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [ -n "$(git status --porcelain)" ]; then
-            git add data/quota-snapshots.json data/aa-scores.json opencode-go-model-pareto.html
+            git add data/quota-snapshots.json data/aa-scores.json data/aa-modality-cache.json opencode-go-model-pareto.html
             # 若 HTML 未变化（仅时间戳变）也一并提交，确保 Pages 触发部署
             git commit -m "chore(data): daily snapshot $(date -u +%Y-%m-%d)"
             git push

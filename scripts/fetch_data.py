@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Fetch OpenCode Go quotas and AA scores, then regenerate the HTML.
+"""Fetch OpenCode Go quotas and AA scores via official Data API, then regenerate the HTML.
 
-The parser intentionally targets semantic table/row markers instead of fixed
-character offsets. Files are only replaced after both pages pass validation.
+- 智力分：走官方 https://artificialanalysis.ai/api/v2/data/llms/models 需 x-api-key（免费 Key）
+  解析失败直接抛错，交由 GitHub Actions 失败通知邮件
+- 配额：仍抓 https://opencode.ai/docs/zh-cn/go/
+- 模态：scrape 结果缓存到 data/aa-modality-cache.json，新模型才抓取
 
 Usage:
     python fetch_data.py
@@ -13,8 +15,8 @@ from __future__ import annotations
 
 import argparse
 import gzip
-import html as html_lib
 import json
+import os
 import re
 import sys
 import tempfile
@@ -29,14 +31,15 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parent.parent
 QUOTA_PATH = ROOT / "data" / "quota-snapshots.json"
 AA_PATH = ROOT / "data" / "aa-scores.json"
+MODALITY_CACHE_PATH = ROOT / "data" / "aa-modality-cache.json"
 GENERATOR_PATH = ROOT / "scripts" / "generate_html.py"
 OPENCODE_URL = "https://opencode.ai/docs/zh-cn/go/"
-AA_URL = "https://aihot.virxact.com/leaderboard/methodology"
+AA_API_URL = "https://artificialanalysis.ai/api/v2/data/llms/models"
 USER_AGENT = "opencode-go-model-pareto/1.0 (+https://opencode.ai/docs/zh-cn/go/)"
 # 手工别名：模型名 -> 官方 slug 不一致时使用
 AA_SLUG_ALIAS: dict[str, str] = {
     "DeepSeek V4 Flash Vision Exp": "deepseek-v4-flash-vision",
-    "MiMo-V2.5": "mimo-v2-5-0424",  # 历史别名，API 亦有 mimo-v2-5-0424
+    "MiMo-V2.5": "mimo-v2-5-0424",
 }
 
 
@@ -47,6 +50,35 @@ def _slug_for_model(model: str) -> str:
     while "--" in candidate:
         candidate = candidate.replace("--", "-")
     return candidate.strip("-")
+
+
+def _load_dotenv() -> None:
+    """轻量加载 ROOT/.env 到 os.environ（不覆盖已有环境变量），避免依赖 python-dotenv"""
+    env_path = ROOT / ".env"
+    if not env_path.exists():
+        return
+    try:
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+    except Exception as e:
+        print(f"load .env failed: {e}", file=sys.stderr)
+
+
+def _get_api_key() -> str:
+    _load_dotenv()
+    key = os.environ.get("ARTIFICIAL_ANALYSIS_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError(
+            "ARTIFICIAL_ANALYSIS_API_KEY 未配置：本地请在 .env 中设置，GitHub Actions 请在 Settings > Secrets and variables > Actions 中添加同名 Secret"
+        )
+    return key
 
 
 class TableParser(HTMLParser):
@@ -85,67 +117,20 @@ class TableParser(HTMLParser):
             self._table = None
 
 
-class AARowParser(HTMLParser):
-    """Extract model slugs and scores from AIHOT leaderboard rows."""
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.rows: list[dict[str, str]] = []
-        self._row: dict[str, str] | None = None
-        self._capture: str | None = None
-        self._buffer: list[str] = []
-        self._row_depth = 0
-
-    @staticmethod
-    def classes(attrs: list[tuple[str, str | None]]) -> set[str]:
-        value = dict(attrs).get("class") or ""
-        return set(value.split())
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        classes = self.classes(attrs)
-        if "lb-source-model-row" in classes:
-            self._row = {}
-            self._row_depth = 1
-        elif self._row is not None:
-            self._row_depth += 1
-        if self._row is not None and "lb-source-model-name" in classes:
-            self._capture = "model"
-            self._buffer = []
-        elif self._row is not None and "lb-source-model-score" in classes:
-            self._capture = "score"
-            self._buffer = []
-
-    def handle_data(self, data: str) -> None:
-        if self._capture is not None:
-            self._buffer.append(data)
-
-    def handle_endtag(self, tag: str) -> None:
-        if self._capture is not None and tag in {"span", "strong"}:
-            value = " ".join("".join(self._buffer).split())
-            if value:
-                assert self._row is not None
-                self._row[self._capture] = value
-            self._capture = None
-            self._buffer = []
-        if self._row is not None:
-            self._row_depth -= 1
-            if self._row_depth == 0:
-                if "model" in self._row and "score" in self._row:
-                    self.rows.append(self._row)
-                self._row = None
-
-
-def fetch(url: str, retries: int = 5, timeout: int = 45) -> str:
+def fetch(url: str, retries: int = 5, timeout: int = 45, headers: dict[str, str] | None = None) -> str:
     import random
     last_error: Exception | None = None
+    base_headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/json",
+        "Accept-Encoding": "gzip",
+        "Cache-Control": "no-cache",
+    }
+    if headers:
+        base_headers.update(headers)
     for attempt in range(retries):
         try:
-            request = Request(url, headers={
-                "User-Agent": USER_AGENT,
-                "Accept": "text/html,application/xhtml+xml",
-                "Accept-Encoding": "gzip",
-                "Cache-Control": "no-cache",
-            })
+            request = Request(url, headers=base_headers)
             with urlopen(request, timeout=timeout) as response:
                 payload = response.read(10 * 1024 * 1024 + 1)
                 if len(payload) > 10 * 1024 * 1024:
@@ -157,15 +142,53 @@ def fetch(url: str, retries: int = 5, timeout: int = 45) -> str:
         except (HTTPError, URLError, TimeoutError, ValueError, OSError) as error:
             last_error = error
             status = getattr(error, "code", None)
+            body = ""
+            if isinstance(error, HTTPError):
+                try:
+                    body = error.read().decode(errors="replace")[:500]
+                except Exception:
+                    pass
             is_retryable_5xx = isinstance(error, HTTPError) and status is not None and 500 <= status < 600
             is_timeout = isinstance(error, (TimeoutError, URLError)) or "timed out" in str(error).lower()
+            is_rate_limit = status == 429
             if attempt + 1 >= retries:
                 break
-            base = 4 * (2**attempt) if (is_retryable_5xx or is_timeout) else 2**attempt
+            base = 4 * (2**attempt) if (is_retryable_5xx or is_timeout or is_rate_limit) else 2**attempt
             sleep_s = min(60, base + random.uniform(0, 1))
-            print(f"fetch {url} failed (attempt {attempt+1}/{retries}): {error} (status={status}), retry in {sleep_s:.1f}s", file=sys.stderr)
+            print(f"fetch {url} failed (attempt {attempt+1}/{retries}): {error} (status={status}) body={body[:200]} retry in {sleep_s:.1f}s", file=sys.stderr)
             time.sleep(sleep_s)
     raise RuntimeError(f"failed to fetch {url} after {retries} attempts: {last_error}")
+
+
+def fetch_aa_via_api() -> dict[str, float]:
+    """走官方 Data API 获取智力分，失败直接抛错（由 Actions 邮件通知）"""
+    api_key = _get_api_key()
+    raw = fetch(AA_API_URL, retries=5, timeout=45, headers={"x-api-key": api_key, "Accept": "application/json"})
+    try:
+        doc = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"AA API 返回非 JSON，解析失败: {e}\nbody={raw[:1000]}")
+    if not isinstance(doc, dict) or doc.get("status") != 200:
+        raise RuntimeError(f"AA API 返回异常 status: {doc.get('status')} body={raw[:1000]}")
+    data = doc.get("data")
+    if not isinstance(data, list) or not data:
+        raise RuntimeError(f"AA API data 为空或非数组 body={raw[:1000]}")
+    scores: dict[str, float] = {}
+    for item in data:
+        slug = item.get("slug")
+        evals = item.get("evaluations") or {}
+        intel = evals.get("artificial_analysis_intelligence_index")
+        if not slug or intel is None:
+            continue
+        try:
+            score = float(intel)
+        except (TypeError, ValueError):
+            continue
+        # API 的 slug 即为 aa_model_id（如 glm-5-3），直接可用
+        scores[slug] = score
+    if not scores:
+        raise RuntimeError(f"AA API 解析后得分为空，已抓 {len(data)} 条但无 intelligence_index")
+    return scores
 
 
 def parse_quota_value(value: str) -> int | None:
@@ -200,25 +223,34 @@ def parse_opencode_quotas(source: str) -> list[dict[str, Any]]:
     raise RuntimeError("could not find the OpenCode Go quota table")
 
 
-def parse_aa_scores(source: str) -> dict[str, float]:
-    parser = AARowParser()
-    parser.feed(source)
-    scores: dict[str, float] = {}
-    for row in parser.rows:
-        model = html_lib.unescape(row["model"])
-        raw_score = row["score"].replace(",", ".")
-        try:
-            score = float(raw_score)
-        except ValueError:
-            continue
-        scores.setdefault(model, score)
-    if not scores:
-        raise RuntimeError("could not find AA leaderboard model rows")
-    return scores
+# ---- Modality 缓存 ----
+
+def _load_modality_cache() -> dict[str, str]:
+    if not MODALITY_CACHE_PATH.exists():
+        return {}
+    try:
+        data = json.loads(MODALITY_CACHE_PATH.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
+    except Exception as e:
+        print(f"load modality cache failed: {e}, will rebuild", file=sys.stderr)
+    return {}
+
+
+def _save_modality_cache(cache: dict[str, str]) -> None:
+    MODALITY_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=MODALITY_CACHE_PATH.parent, delete=False) as handle:
+        json.dump(cache, handle, ensure_ascii=False, indent=2, sort_keys=True)
+        handle.write("\n")
+        tmp = Path(handle.name)
+    tmp.replace(MODALITY_CACHE_PATH)
 
 
 def scrape_aa_modality(slug: str) -> str | None:
-    """从官网 https://artificialanalysis.ai/models/<slug> 抓取 Input modality。无 Pro Key 也可用。"""
+    """带缓存的抓取：历史结果从 data/aa-modality-cache.json 读取，新 slug 才请求官网"""
+    cache = _load_modality_cache()
+    if slug in cache and cache[slug] in ("多模态", "纯文字"):
+        return cache[slug]
     url = f"https://artificialanalysis.ai/models/{slug}"
     try:
         html = fetch(url, retries=3, timeout=30)
@@ -230,11 +262,21 @@ def scrape_aa_modality(slug: str) -> str | None:
         print(f"scrape modality for {slug}: pattern not found", file=sys.stderr)
         return None
     supports = m.group(1).strip().lower()
+    result = None
     if "image" in supports:
-        return "多模态"
-    if "text" in supports:
-        return "纯文字"
-    return None
+        result = "多模态"
+    elif "text" in supports:
+        result = "纯文字"
+    else:
+        return None
+    # 写回缓存
+    cache[slug] = result
+    try:
+        _save_modality_cache(cache)
+        print(f"cached modality {slug} -> {result}")
+    except Exception as e:
+        print(f"save modality cache failed: {e}", file=sys.stderr)
+    return result
 
 
 def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
@@ -311,7 +353,7 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
                 "requests_per_5h": reference_row["requests_per_5h"],
             }
             updated_aa = dict(aa_doc)
-            updated_aa["source_url"] = AA_URL
+            updated_aa["source_url"] = AA_API_URL
             updated_aa["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
             return updated_quota, updated_aa
 
@@ -334,7 +376,7 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
     }
 
     updated_aa = dict(aa_doc)
-    updated_aa["source_url"] = AA_URL
+    updated_aa["source_url"] = AA_API_URL
     updated_aa["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
     known_aa_models = {row.get("model") for row in existing_aa}
     for model in added:
@@ -368,7 +410,7 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
             else:
                 missing_scores.append(slug)
     if missing_scores:
-        raise RuntimeError(f"AA page did not contain previously known model IDs: {missing_scores}")
+        raise RuntimeError(f"AA API 未包含已知模型 IDs: {missing_scores}，请检查官方接口或模型是否更名")
     return updated_quota, updated_aa
 
 
@@ -389,10 +431,9 @@ def main() -> None:
     print(f"Fetching {OPENCODE_URL}")
     opencode_source = fetch(OPENCODE_URL)
     quota_rows = parse_opencode_quotas(opencode_source)
-    print(f"Fetching {AA_URL}")
-    aa_source = fetch(AA_URL)
-    aa_scores = parse_aa_scores(aa_source)
-    print(f"Parsed {len(quota_rows)} quota rows and {len(aa_scores)} AA scores (virxact)")
+    print(f"Fetching {AA_API_URL} (official Data API, free key)")
+    aa_scores = fetch_aa_via_api()
+    print(f"Parsed {len(quota_rows)} quota rows and {len(aa_scores)} AA scores (official API)")
 
     quota_doc = json.loads(QUOTA_PATH.read_text(encoding="utf-8"))
     aa_doc = json.loads(AA_PATH.read_text(encoding="utf-8"))

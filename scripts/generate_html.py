@@ -21,6 +21,7 @@ DEFAULT_TEMPLATE = ROOT / "template" / "opencode-go-model-pareto.template.html"
 DEFAULT_QUOTA = ROOT / "data" / "quota-snapshots.json"
 DEFAULT_AA = ROOT / "data" / "aa-scores.json"
 DEFAULT_OUTPUT = ROOT / "opencode-go-model-pareto.html"
+MODALITY_CACHE_PATH = ROOT / "data" / "aa-modality-cache.json"
 
 # Visual metadata is intentionally kept out of the two data files: the JSON files
 # remain pure quota/score data while this mapping describes how models are drawn.
@@ -65,8 +66,32 @@ def _slug_for_model(model: str) -> str:
         candidate = candidate.replace("--", "-")
     return candidate.strip("-")
 
+def _load_modality_cache() -> dict[str, str]:
+    if not MODALITY_CACHE_PATH.exists():
+        return {}
+    try:
+        import json as _json
+        data = _json.loads(MODALITY_CACHE_PATH.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
+    except Exception as e:
+        print(f"load modality cache failed: {e}, will rebuild", file=sys.stderr)
+    return {}
+
+def _save_modality_cache(cache: dict[str, str]) -> None:
+    import json as _json, tempfile as _tf
+    MODALITY_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with _tf.NamedTemporaryFile("w", encoding="utf-8", dir=MODALITY_CACHE_PATH.parent, delete=False) as h:
+        _json.dump(cache, h, ensure_ascii=False, indent=2, sort_keys=True)
+        h.write("\n")
+        tmp = Path(h.name)
+    tmp.replace(MODALITY_CACHE_PATH)
+
 def _scrape_modality(slug: str, timeout: int = 20) -> str | None:
-    """从官网 https://artificialanalysis.ai/models/<slug> 抓取 Input modality。免 Pro Key。"""
+    """带缓存的抓取：历史结果从 data/aa-modality-cache.json 读取，新 slug 才请求官网"""
+    cache = _load_modality_cache()
+    if slug in cache and cache[slug] in ("多模态", "纯文字"):
+        return cache[slug]
     url = f"https://artificialanalysis.ai/models/{slug}"
     try:
         req = Request(url, headers={"User-Agent": "opencode-go-model-pareto/1.0"})
@@ -80,11 +105,20 @@ def _scrape_modality(slug: str, timeout: int = 20) -> str | None:
         print(f"scrape modality for {slug}: pattern not found", file=sys.stderr)
         return None
     supports = m.group(1).strip().lower()
+    result = None
     if "image" in supports:
-        return "多模态"
-    if "text" in supports:
-        return "纯文字"
-    return None
+        result = "多模态"
+    elif "text" in supports:
+        result = "纯文字"
+    else:
+        return None
+    cache[slug] = result
+    try:
+        _save_modality_cache(cache)
+        print(f"cached modality {slug} -> {result}")
+    except Exception as e:
+        print(f"save modality cache failed: {e}", file=sys.stderr)
+    return result
 
 def _infer_brand(model: str, slug: str | None) -> str:
     """基于模型名前缀推断 brand（与 icons 字典对齐），用于新模型官网抓取失败时的兜底。
