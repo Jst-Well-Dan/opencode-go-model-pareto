@@ -15,6 +15,7 @@ import argparse
 import gzip
 import html as html_lib
 import json
+import re
 import sys
 import tempfile
 import time
@@ -32,6 +33,20 @@ GENERATOR_PATH = ROOT / "scripts" / "generate_html.py"
 OPENCODE_URL = "https://opencode.ai/docs/zh-cn/go/"
 AA_URL = "https://aihot.virxact.com/leaderboard/methodology"
 USER_AGENT = "opencode-go-model-pareto/1.0 (+https://opencode.ai/docs/zh-cn/go/)"
+# 手工别名：模型名 -> 官方 slug 不一致时使用
+AA_SLUG_ALIAS: dict[str, str] = {
+    "DeepSeek V4 Flash Vision Exp": "deepseek-v4-flash-vision",
+    "MiMo-V2.5": "mimo-v2-5-0424",  # 历史别名，API 亦有 mimo-v2-5-0424
+}
+
+
+def _slug_for_model(model: str) -> str:
+    if model in AA_SLUG_ALIAS:
+        return AA_SLUG_ALIAS[model]
+    candidate = model.lower().replace(" ", "-").replace(".", "-").replace("_", "-")
+    while "--" in candidate:
+        candidate = candidate.replace("--", "-")
+    return candidate.strip("-")
 
 
 class TableParser(HTMLParser):
@@ -141,13 +156,11 @@ def fetch(url: str, retries: int = 5, timeout: int = 45) -> str:
                 return payload.decode(charset, errors="replace")
         except (HTTPError, URLError, TimeoutError, ValueError, OSError) as error:
             last_error = error
-            # 5xx (含 504) 属瞬时故障，值得更长退避；4xx 非重试或短退避
             status = getattr(error, "code", None)
             is_retryable_5xx = isinstance(error, HTTPError) and status is not None and 500 <= status < 600
             is_timeout = isinstance(error, (TimeoutError, URLError)) or "timed out" in str(error).lower()
             if attempt + 1 >= retries:
                 break
-            # 指数退避 + 抖动：5xx/超时用 4s,8s,16s,32s 档位，其它用 2s,4s,8s
             base = 4 * (2**attempt) if (is_retryable_5xx or is_timeout) else 2**attempt
             sleep_s = min(60, base + random.uniform(0, 1))
             print(f"fetch {url} failed (attempt {attempt+1}/{retries}): {error} (status={status}), retry in {sleep_s:.1f}s", file=sys.stderr)
@@ -198,12 +211,30 @@ def parse_aa_scores(source: str) -> dict[str, float]:
             score = float(raw_score)
         except ValueError:
             continue
-        # Keep the first occurrence of a slug; the visible AA Index table is
-        # ordered and variants with suffixes have different slugs.
         scores.setdefault(model, score)
     if not scores:
         raise RuntimeError("could not find AA leaderboard model rows")
     return scores
+
+
+def scrape_aa_modality(slug: str) -> str | None:
+    """从官网 https://artificialanalysis.ai/models/<slug> 抓取 Input modality。无 Pro Key 也可用。"""
+    url = f"https://artificialanalysis.ai/models/{slug}"
+    try:
+        html = fetch(url, retries=3, timeout=30)
+    except Exception as e:
+        print(f"scrape modality for {slug} failed: {e}", file=sys.stderr)
+        return None
+    m = re.search(r'Input modality.*?sr-only"><p>Supports:\s*([^<]+)</p>', html, re.S | re.I)
+    if not m:
+        print(f"scrape modality for {slug}: pattern not found", file=sys.stderr)
+        return None
+    supports = m.group(1).strip().lower()
+    if "image" in supports:
+        return "多模态"
+    if "text" in supports:
+        return "纯文字"
+    return None
 
 
 def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
@@ -224,30 +255,33 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
     source_models = [row["model"] for row in quota_rows]
     latest_date = max(existing_snapshots)
     reference_models = [row["model"] for row in existing_snapshots[latest_date]["models"]]
-    # Newly listed models are appended automatically (with null quotas/scores
-    # until MODEL_META and AA mapping catch up); removals still need manual care.
     added = [model for model in source_models if model not in set(reference_models)]
     removed = sorted(set(reference_models) - set(source_models))
     if removed:
-        raise RuntimeError(f"OpenCode model list changed; removed={removed}. Update JSON/MODEL_META manually first.")
+        print(f"Models removed from OpenCode page (dropped from latest, kept in history): {removed}", file=sys.stderr)
     if added:
-        print(f"New models on the OpenCode page (added with null quotas): {added}")
-    ordered_models = reference_models + added
+        print(f"New models on the OpenCode page (added): {added}")
+    ordered_models = [m for m in reference_models if m not in removed] + added
     quota_by_model = {row["model"]: row for row in quota_rows}
     snapshot_models = []
     for model in ordered_models:
-        row = quota_by_model[model]
-        snapshot_models.append({
-            "model": model,
-            "requests_per_5h": row["requests_per_5h"],
-            "requests_per_week": row["requests_per_week"],
-            "requests_per_month": row["requests_per_month"],
-        })
+        row = quota_by_model.get(model)
+        if row is None:
+            snapshot_models.append({
+                "model": model,
+                "requests_per_5h": None,
+                "requests_per_week": None,
+                "requests_per_month": None,
+            })
+        else:
+            snapshot_models.append({
+                "model": model,
+                "requests_per_5h": row["requests_per_5h"],
+                "requests_per_week": row["requests_per_week"],
+                "requests_per_month": row["requests_per_month"],
+            })
 
-    # --- 去重判定：若配额与 AA 均与最新快照完全一致，则不新建当日快照 ---
-    # 需在变更前捕获 AA 旧值用于对比
     before_aa_intel = {row.get("model"): row.get("intelligence") for row in existing_aa}
-    # 预计算 AA 更新后的值（不直接修改原列表，用于对比）
     would_update_aa = False
     for row in existing_aa:
         slug = row.get("aa_model_id")
@@ -255,9 +289,13 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
             if row.get("intelligence") != aa_scores[slug]:
                 would_update_aa = True
                 break
-    # 若新增模型则必然视为变化
+        elif not slug:
+            candidate = _slug_for_model(row["model"])
+            if candidate in aa_scores:
+                would_update_aa = True
+                break
     quota_identical = False
-    if not added and snapshot_date != latest_date:
+    if snapshot_date != latest_date:
         latest_models = existing_snapshots[latest_date].get("models")
         quota_identical = snapshot_models == latest_models
         aa_identical = not would_update_aa
@@ -266,7 +304,6 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
             updated_quota = dict(quota_doc)
             updated_quota["source_url"] = OPENCODE_URL
             updated_quota["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
-            # 仍更新基准（配额未变，基准不变，但保持一致）
             tracked_rows = [row for row in quota_rows if row["requests_per_5h"] is not None]
             reference_row = max(tracked_rows, key=lambda row: row["requests_per_5h"])
             updated_quota["normalization_reference"] = {
@@ -276,15 +313,12 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
             updated_aa = dict(aa_doc)
             updated_aa["source_url"] = AA_URL
             updated_aa["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
-            # 仍需将 AA 的内存更新落盘（若有新增模型，即使配额相同也需落盘）
-            # 此处无新增且无 AA 变化，直接返回
             return updated_quota, updated_aa
 
     updated_quota = dict(quota_doc)
     updated_quota["source_url"] = OPENCODE_URL
     updated_quota["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
     updated_quota.setdefault("snapshots", {})
-    # 将此前“今日”快照降为无标签（历史），避免出现多个“今日”
     for d, snap in list(updated_quota["snapshots"].items()):
         if d != snapshot_date and snap.get("label") == "今日":
             snap["label"] = ""
@@ -292,7 +326,6 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
         "label": "今日",
         "models": snapshot_models,
     }
-    # Record the most generous quota model (largest requests_per_5h).
     tracked_rows = [row for row in quota_rows if row["requests_per_5h"] is not None]
     reference_row = max(tracked_rows, key=lambda row: row["requests_per_5h"])
     updated_quota["normalization_reference"] = {
@@ -306,7 +339,22 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
     known_aa_models = {row.get("model") for row in existing_aa}
     for model in added:
         if model not in known_aa_models:
-            existing_aa.append({"model": model, "aa_model_id": None, "intelligence": None})
+            candidate = _slug_for_model(model)
+            if candidate in aa_scores:
+                aa_id = candidate
+                intelligence = aa_scores[aa_id]
+                print(f"Auto-mapped new model {model!r} -> {aa_id} ({intelligence})")
+            else:
+                aa_id = None
+                intelligence = None
+            existing_aa.append({"model": model, "aa_model_id": aa_id, "intelligence": intelligence})
+    for row in existing_aa:
+        if not row.get("aa_model_id"):
+            candidate = _slug_for_model(row["model"])
+            if candidate in aa_scores:
+                row["aa_model_id"] = candidate
+                row["intelligence"] = aa_scores[candidate]
+                print(f"Backfilled {row['model']!r} -> {candidate} ({aa_scores[candidate]})")
     missing_scores = []
     for row in existing_aa:
         slug = row.get("aa_model_id")
@@ -315,7 +363,10 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
         if slug in aa_scores:
             row["intelligence"] = aa_scores[slug]
         elif row.get("intelligence") is not None:
-            missing_scores.append(slug)
+            if row.get("model") in removed:
+                print(f"AA score missing for retired model {row['model']} ({slug}), keeping previous {row['intelligence']}", file=sys.stderr)
+            else:
+                missing_scores.append(slug)
     if missing_scores:
         raise RuntimeError(f"AA page did not contain previously known model IDs: {missing_scores}")
     return updated_quota, updated_aa
@@ -337,11 +388,11 @@ def main() -> None:
 
     print(f"Fetching {OPENCODE_URL}")
     opencode_source = fetch(OPENCODE_URL)
+    quota_rows = parse_opencode_quotas(opencode_source)
     print(f"Fetching {AA_URL}")
     aa_source = fetch(AA_URL)
-    quota_rows = parse_opencode_quotas(opencode_source)
     aa_scores = parse_aa_scores(aa_source)
-    print(f"Parsed {len(quota_rows)} quota rows and {len(aa_scores)} AA scores")
+    print(f"Parsed {len(quota_rows)} quota rows and {len(aa_scores)} AA scores (virxact)")
 
     quota_doc = json.loads(QUOTA_PATH.read_text(encoding="utf-8"))
     aa_doc = json.loads(AA_PATH.read_text(encoding="utf-8"))

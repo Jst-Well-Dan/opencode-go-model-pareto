@@ -45,9 +45,8 @@ python scripts/generate_card.py
 
 数据来源：
 - **OpenCode Go 配额**：https://opencode.ai/docs/zh-cn/go/
-- **AA 智力评分**：https://aihot.virxact.com/leaderboard/methodology
-
-> 抓取结果写入 `data/quota-snapshots.json` 与 `data/aa-scores.json`。若遇到网络失败、页面结构变动或校验不通过，**不会覆盖原 JSON**。
+- **AA 智力评分**：https://aihot.virxact.com/leaderboard/methodology（镜像，免 Key；官网 `api/v2/data/llms/models` 为 Pro 付费已不再尝试）
+- **模态与图标**：https://artificialanalysis.ai/models/<slug>（`Input modality` → `Supports: text / text and image`）及 https://artificialanalysis.ai/img/logos/<slug>_small.svg（如 `LongCat-2.0` 已替换为官方绿猫 Logo）
 
 常用参数：
 ```bash
@@ -61,7 +60,7 @@ python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PN
 
 1. **更新快照**：在 `data/quota-snapshots.json` 新增或修改日期快照（每个模型配置 `requests_per_5h` / `requests_per_week` / `requests_per_month`）。
 2. **更新评分**：在 `data/aa-scores.json` 修改或补充对应模型的 `intelligence`。
-3. **补充元信息**：若引入了**全新模型**，需在 `scripts/generate_html.py` 的 `MODEL_META` 中配置其 `brand`（品牌图标）与 `modality`（`多模态` / `纯文字`）。
+3. **补充元信息**：若引入了**全新模型**，建议在 `scripts/generate_html.py` 的 `MODEL_META` 中配置其 `brand` 与 `modality`。未配置时**不再兜底为 `unknown/纯文字`**，而是默认抓取官网 `https://artificialanalysis.ai/models/<slug>` 的 `Input modality` 自动判定（`image` → 多模态），`brand` 按模型名前缀启发式推断；`aa_model_id` 通过 `AA_SLUG_ALIAS` + `_slug_for_model()` 自动映射。
 4. **重新渲染**：执行 `python scripts/generate_html.py`。
 
 ---
@@ -72,11 +71,14 @@ python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PN
 - **相对配额成本**：$\text{相对成本} = \frac{\text{基准配额}}{\text{模型自身配额}}$。
 - **基准设定**：基准动态取**最新快照中的最大配额值**（当前为 `Muse Spark 1.2 Contributor` 的 45,300 次/5h）。因此最慷慨的模型相对成本恒为 `1.0`。
 - **动态横轴 $x_{\max}$**：横轴最大值动态计算为 $\frac{\text{基准配额}}{\text{最小配额}}$（当前为 411.8），确保所有低配额模型完全落入图表可视区域内，避免固定刻度导致越界。
+- **动态纵轴 $y_{\min}/y_{\max}$**：纵轴不再固定 `36–62`，改为基于 `aa-scores.json` 中实际 `intelligence` 分布动态计算：`y_min = max(0, floor(min-2))`、`y_max = ceil(max+2)`，跨度 `<12` 时各向外扩 `4`，刻度以 `__Y_TICKS__`（步长 `4`）注入模板，解决 `LongCat-2.0`（34.0）等低分越界问题。
 
 ### 2. 容错机制与异常值处理
 - **空配额/免费档**：线上配额为 `-` 的模型（如免费档 `Ox Alpha Free`）标记为 `cost: null`，不参与帕累托计算，在横轴最左端以虚线头像锚定展示（`免费 · 不限`）。
-- **缺分模型**：有配额但暂无 AA 评测分的模型（如 `DeepSeek V4 Flash Vision Exp`）以虚线头像标在其相对成本位置，并在缺失信息面板中以等宽卡片展示。
-- **历史快照缺失对齐**：最新快照决定模型全集。当切换到新模型尚未上线的历史日期时，缺失模型自动以 `null` 对齐过滤，不会在历史图表中误渲染。
+- **缺分模型**：有配额但暂无 AA 评测分的模型以虚线头像标在其相对成本位置，并在缺失信息面板中以等宽卡片展示。
+- **历史快照缺失对齐**：以最新快照为基准，结合历史快照并集（`generate_html.py` 自动追加历史独有模型）决定模型全集；当切换到新模型尚未上线的历史日期时，缺失模型自动以 `null`/`absent` 对齐过滤，不会在历史图表中误渲染。已下线模型（如 `Ox Alpha Free` / `Grok 4.5`）仅从最新快照移除，历史快照仍保留，AA 侧保留最后已知分数不报错。
+- **去重快照**：`fetch_data.py:update_documents()` 在 `quota` 与 `AA` 均与最新快照完全一致（含 `AA_SLUG_ALIAS` 回填）时跳过新建当日快照，避免 `2026-08-23/24` 这类重复提交；新增模型或分数变动则仍正常落盘。
+- **新模型模态**：`MODEL_META` 缺失时不再兜底为 `unknown/纯文字`，而是默认抓取官网 `https://artificialanalysis.ai/models/<slug>` 的 `Input modality`（`Supports: text and image` → 多模态）自动判定，`brand` 按前缀推断；失败才抛错提示手填。
 
 ### 3. 时间轴与交互
 - 顶部支持滑块拖动（`◀ 拖动 ▶`）与下拉菜单双控，支持 90+ 天历史快照回溯。
@@ -90,43 +92,39 @@ python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PN
 
 ## 数据结构规范
 
-- **`data/quota-snapshots.json`**
+- **`data/quota-snapshots.json`**（按日期快照，最新为 `2026-08-27`，含 `LongCat-2.0` / `Grok 4.6` / `GLM-5.3-Flash` 等 23 模型；`normalization_reference` 记录当前基准 `Muse Spark 1.2 Contributor 45300/5h`）
   ```json
   {
+    "normalization_reference": { "model": "Muse Spark 1.2 Contributor", "requests_per_5h": 45300 },
     "snapshots": {
-      "2026-08-23": {
+      "2026-08-27": {
         "label": "今日",
         "models": [
-          {
-            "name": "GLM-5.3",
-            "requests_per_5h": 220,
-            "requests_per_week": 2640,
-            "requests_per_month": 10560
-          }
+          { "model": "GLM-5.3", "requests_per_5h": 220, "requests_per_week": 540, "requests_per_month": 1080 }
         ]
       }
     }
   }
   ```
-- **`data/aa-scores.json`**
+- **`data/aa-scores.json`**（`source_url` 为镜像 `https://aihot.virxact.com/leaderboard/methodology`，含 `aa_model_id` 映射）
   ```json
   {
+    "source_url": "https://aihot.virxact.com/leaderboard/methodology",
     "models": [
-      {
-        "name": "GLM-5.3",
-        "aa_model_id": "glm-5-3",
-        "intelligence": 59.5
-      }
+      { "model": "GLM-5.3", "aa_model_id": "glm-5-3", "intelligence": 59.5 },
+      { "model": "LongCat-2.0", "aa_model_id": "longcat-2-0", "intelligence": 34.0 }
     ]
   }
   ```
+  > 字段以 `model` 为主键（历史文档中 `name` 为旧称，已统一为 `model`）。
 
 ---
 
 ## 自动化与部署
 
 - **GitHub Pages**：静态单文件托管（`main / (root)`）。
-- **GitHub Actions**：每天 09:00 CST 定时触发 `.github/workflows/daily.yml`，拉取最新配额与评分；若数据有更新则自动提交并部署。
+- **GitHub Actions**：每天 09:00 CST 定时触发 `.github/workflows/daily.yml`（`nick-fields/retry@v3` 重试 3 次），拉取最新配额与评分；无 Pro Key 依赖，纯镜像+官网 HTML 抓取，若数据无变化则去重跳过。
+- **忽略规则**：`cards/` 为本地产物不提交。
 - **技术栈**：
   - 数据与生成：Python 3.13（标准库 `HTMLParser` 解析 + `Playwright` 截图）
   - 前端：单文件原生 HTML5 + 内联 SVG + Base64 图标，零外部第三方 CDN 依赖。

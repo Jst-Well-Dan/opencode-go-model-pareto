@@ -10,8 +10,11 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import re
+import sys
 from pathlib import Path
 from typing import Any
+from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TEMPLATE = ROOT / "template" / "opencode-go-model-pareto.template.html"
@@ -22,6 +25,8 @@ DEFAULT_OUTPUT = ROOT / "opencode-go-model-pareto.html"
 # Visual metadata is intentionally kept out of the two data files: the JSON files
 # remain pure quota/score data while this mapping describes how models are drawn.
 MODEL_META = {
+    "Grok 4.6": {"brand": "grok", "modality": "多模态"},
+    "GLM-5.3-Flash": {"brand": "zhipu", "modality": "多模态"},
     "Grok 4.5": {"brand": "grok", "modality": "多模态"},
     "GPT 5.6 Luna": {"brand": "openai", "modality": "多模态"},
     "GLM-5.3": {"brand": "zhipu", "modality": "纯文字"},
@@ -44,8 +49,72 @@ MODEL_META = {
     "DeepSeek V4 Flash Vision Exp": {"brand": "deepseek", "modality": "多模态"},
     "Hy3": {"brand": "hunyuan", "modality": "纯文字"},
     "Ox Alpha Free": {"brand": "ox", "modality": "纯文字"},
-    "LongCat-2.0": {"brand": "longcat", "modality": "多模态"},
+    "LongCat-2.0": {"brand": "longcat", "modality": "纯文字"},
 }
+
+AA_SLUG_ALIAS: dict[str, str] = {
+    "DeepSeek V4 Flash Vision Exp": "deepseek-v4-flash-vision",
+    "MiMo-V2.5": "mimo-v2-5-0424",
+}
+
+def _slug_for_model(model: str) -> str:
+    if model in AA_SLUG_ALIAS:
+        return AA_SLUG_ALIAS[model]
+    candidate = model.lower().replace(" ", "-").replace(".", "-").replace("_", "-")
+    while "--" in candidate:
+        candidate = candidate.replace("--", "-")
+    return candidate.strip("-")
+
+def _scrape_modality(slug: str, timeout: int = 20) -> str | None:
+    """从官网 https://artificialanalysis.ai/models/<slug> 抓取 Input modality。免 Pro Key。"""
+    url = f"https://artificialanalysis.ai/models/{slug}"
+    try:
+        req = Request(url, headers={"User-Agent": "opencode-go-model-pareto/1.0"})
+        with urlopen(req, timeout=timeout) as resp:
+            html_text = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"scrape modality for {slug} failed: {e}", file=sys.stderr)
+        return None
+    m = re.search(r'Input modality.*?sr-only"><p>Supports:\s*([^<]+)</p>', html_text, re.S | re.I)
+    if not m:
+        print(f"scrape modality for {slug}: pattern not found", file=sys.stderr)
+        return None
+    supports = m.group(1).strip().lower()
+    if "image" in supports:
+        return "多模态"
+    if "text" in supports:
+        return "纯文字"
+    return None
+
+def _infer_brand(model: str, slug: str | None) -> str:
+    """基于模型名前缀推断 brand（与 icons 字典对齐），用于新模型官网抓取失败时的兜底。
+    官网抓取本身可通过 logo 映射，但为保持离线可用，这里用启发式。"""
+    low = model.lower()
+    if low.startswith("grok"):
+        return "grok"
+    if low.startswith("glm"):
+        return "zhipu"
+    if low.startswith("kimi"):
+        return "kimi"
+    if low.startswith("mimo"):
+        return "xiaomimimo"
+    if low.startswith("minimax"):
+        return "minimax"
+    if "muse" in low:
+        return "muse"
+    if low.startswith("qwen"):
+        return "qwen"
+    if low.startswith("deepseek"):
+        return "deepseek"
+    if low.startswith("hy"):
+        return "hunyuan"
+    if low.startswith("ox"):
+        return "ox"
+    if "longcat" in low:
+        return "longcat"
+    if low.startswith("gpt"):
+        return "openai"
+    return "unknown"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -65,7 +134,7 @@ def unique_models(rows: list[dict[str, Any]], source: str) -> list[str]:
     return models
 
 
-def build_payload(quota_doc: dict[str, Any], aa_doc: dict[str, Any]) -> tuple[int, float, list[dict[str, Any]], dict[str, list[dict[str, int]]], list[str]]:
+def build_payload(quota_doc: dict[str, Any], aa_doc: dict[str, Any]) -> tuple[int, float, int, int, list[dict[str, Any]], dict[str, list[dict[str, int]]], list[str]]:
     snapshots = quota_doc.get("snapshots")
     aa_rows = aa_doc.get("models")
     if not isinstance(snapshots, dict) or not snapshots:
@@ -80,16 +149,35 @@ def build_payload(quota_doc: dict[str, Any], aa_doc: dict[str, Any]) -> tuple[in
     if not isinstance(first_rows, list) or not first_rows:
         raise ValueError(f"snapshot {dates[0]} must contain a non-empty models array")
     model_order = unique_models(first_rows, f"snapshot {dates[0]}")
+    all_models = set(model_order)
+    for d in dates[1:]:
+        rows = snapshots[d].get("models") or []
+        for r in rows:
+            m = r.get("model")
+            if m and m not in all_models:
+                print(f"Historical model {m!r} from {d} not in latest {dates[0]}, appending to order")
+                model_order.append(m)
+                all_models.add(m)
 
-    # Normalize against the most generous quota (largest requests_per_5h) on the
-    # latest snapshot, so the model that grants the most requests has cost = 1.0.
-    # Models with null quotas (e.g. free/unlimited tiers) are excluded from scaling.
     latest_requests = [row.get("requests_per_5h") for row in first_rows]
     valid_requests = [v for v in latest_requests if isinstance(v, int) and v > 0]
     if not valid_requests:
         raise ValueError(f"snapshot {dates[0]} has no valid requests_per_5h value")
     reference_requests = max(valid_requests)
     x_max = reference_requests / min(valid_requests)
+
+    import math
+    intelligences = [d for d in [aa_by_model[m].get("intelligence") for m in model_order] if isinstance(d, (int, float))]
+    if intelligences:
+        y_data_min = min(intelligences)
+        y_data_max = max(intelligences)
+        y_min = max(0, math.floor(y_data_min - 2))
+        y_max = math.ceil(y_data_max + 2)
+        if y_max - y_min < 12:
+            y_min = max(0, y_min - 4)
+            y_max += 4
+    else:
+        y_min, y_max = 36, 62
 
     if set(model_order) != set(aa_models):
         missing_in_aa = sorted(set(model_order) - set(aa_models))
@@ -101,7 +189,14 @@ def build_payload(quota_doc: dict[str, Any], aa_doc: dict[str, Any]) -> tuple[in
         score = aa_by_model[model]
         meta = MODEL_META.get(model)
         if meta is None:
-            raise ValueError(f"MODEL_META is missing visual metadata for {model}")
+            # 新模型默认走官网抓取，不再兜底为 unknown/纯文字
+            slug = score.get("aa_model_id") or _slug_for_model(model)
+            modality = _scrape_modality(slug) if slug else None
+            if modality is None:
+                raise ValueError(f"MODEL_META missing for {model!r} (slug={slug}) and website scrape failed; please add manually or check AA site")
+            brand = _infer_brand(model, slug)
+            print(f"MODEL_META missing for {model!r}, scraped from https://artificialanalysis.ai/models/{slug}: modality={modality}, brand={brand}")
+            meta = {"brand": brand, "modality": modality}
         base_data.append({
             "model": model,
             "intelligence": score.get("intelligence"),
@@ -115,7 +210,6 @@ def build_payload(quota_doc: dict[str, Any], aa_doc: dict[str, Any]) -> tuple[in
         if not isinstance(rows, list):
             raise ValueError(f"snapshot {date} must contain a models array")
         models = unique_models(rows, f"snapshot {date}")
-        # Allow historical snapshots to miss models that were added later (e.g. Muse Spark)
         unknown = sorted(set(models) - set(model_order))
         if unknown:
             raise ValueError(f"snapshot {date} contains unknown models not in {dates[0]}: {unknown}")
@@ -124,8 +218,6 @@ def build_payload(quota_doc: dict[str, Any], aa_doc: dict[str, Any]) -> tuple[in
         for model in model_order:
             row = rows_by_model.get(model)
             if row is None:
-                # Model did not exist at this snapshot date -> marked absent
-                # (distinct from present-but-unlimited models whose quotas are null)
                 normalized_rows.append({"requests": None, "weekly": None, "monthly": None, "absent": True})
             else:
                 values = {
@@ -139,14 +231,13 @@ def build_payload(quota_doc: dict[str, Any], aa_doc: dict[str, Any]) -> tuple[in
                 normalized_rows.append(values)
         quota_snapshots[date] = normalized_rows
 
-    return reference_requests, x_max, base_data, quota_snapshots, dates
+    return reference_requests, x_max, y_min, y_max, base_data, quota_snapshots, dates
 
 
 def make_date_options(quota_doc: dict[str, Any], dates: list[str]) -> str:
     options = []
     for index, date in enumerate(dates):
         raw_label = quota_doc["snapshots"][date].get("label", "")
-        # 仅最新快照显示“今日”，历史快照的“今日/历史”旧标签视为无后缀，避免出现两个“今日”
         if index == 0:
             label = "今日" if raw_label in ("", "今日", "历史") else raw_label
         else:
@@ -161,14 +252,17 @@ def generate(template_path: Path, quota_path: Path, aa_path: Path, output_path: 
     template = template_path.read_text(encoding="utf-8")
     quota_doc = load_json(quota_path)
     aa_doc = load_json(aa_path)
-    reference, x_max, base_data, quota_snapshots, dates = build_payload(quota_doc, aa_doc)
+    reference, x_max, y_min, y_max, base_data, quota_snapshots, dates = build_payload(quota_doc, aa_doc)
 
-    # normalization_reference from quota JSON (model + value) for dynamic foot text
     norm_ref = quota_doc.get("normalization_reference", {"model": "配额最多者", "requests_per_5h": reference})
+    y_ticks = list(range(y_min, y_max + 1, 4))
     replacements = {
         "__QUOTA_REFERENCE__": json.dumps(reference),
         "__NORMALIZATION_REFERENCE__": json.dumps(norm_ref, ensure_ascii=False),
         "__X_MAX__": json.dumps(x_max),
+        "__Y_MIN__": json.dumps(y_min),
+        "__Y_MAX__": json.dumps(y_max),
+        "__Y_TICKS__": json.dumps(y_ticks),
         "__BASE_DATA__": json.dumps(base_data, ensure_ascii=False, indent=2),
         "__QUOTA_SNAPSHOTS__": json.dumps(quota_snapshots, ensure_ascii=False, indent=2),
         "<!-- __DATE_OPTIONS__ -->": make_date_options(quota_doc, dates),

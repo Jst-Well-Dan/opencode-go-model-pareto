@@ -104,8 +104,8 @@
     },
     {
       "model": "DeepSeek V4 Flash Vision Exp",
-      "aa_model_id": null,
-      "intelligence": null
+      "aa_model_id": "deepseek-v4-flash-vision",
+      "intelligence": 51.5
     },
     {
       "model": "Ox Alpha Free",
@@ -114,10 +114,20 @@
     },
     {
       "model": "LongCat-2.0",
-      "aa_model_id": null,
-      "intelligence": null
+      "aa_model_id": "longcat-2-0",
+      "intelligence": 34.0
+    },
+    {
+      "model": "Grok 4.6",
+      "aa_model_id": "grok-4-6",
+      "intelligence": 60.9
+    },
+    {
+      "model": "GLM-5.3-Flash",
+      "aa_model_id": "glm-5-3-flash",
+      "intelligence": 57.5
     }
   ],
   "source_url": "https://aihot.virxact.com/leaderboard/methodology",
-  "last_fetched_at": "2026-08-25T07:45:07.413676+00:00"
+  "last_fetched_at": "2026-08-27T06:02:32.116804+00:00"
 }
