@@ -762,6 +762,13 @@ def main() -> None:
         goat_source = fetch(GOAT_URL)
         goat_rows = parse_goat_quotas(goat_source)
         print(f"Parsed {len(goat_rows)} GOAT rows (requests + credits)")
+        # Fast/HighSpeed 变体复用基座智力（手工别名），否则 GOAT 表 Intelligence 为空
+        for r in goat_rows:
+            if r.get("intelligence") is None and r["model"] in AA_SLUG_ALIAS:
+                alias_slug = AA_SLUG_ALIAS[r["model"]]
+                if alias_slug in aa_scores:
+                    r["intelligence"] = aa_scores[alias_slug]
+                    print(f"GOAT alias backfill {r['model']} -> {alias_slug} ({r['intelligence']})")
         if GOAT_PATH.exists():
             goat_doc = json.loads(GOAT_PATH.read_text(encoding="utf-8"))
         else:

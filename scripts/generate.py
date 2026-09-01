@@ -160,15 +160,22 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
         valid = [m["requests_per_5h"] for m in snapshots[dates[0]]["models"] if isinstance(m.get("requests_per_5h"), int)]
         ref = max(valid)
         x_max = ref / min(valid)
+        def _intel_for(m):
+            v = goat_intel_by_norm.get(norm(m))
+            if isinstance(v, (int, float)): return v
+            r = aa_by_norm.get(norm(m))
+            if r and isinstance(r.get("intelligence"), (int, float)): return r["intelligence"]
+            # alias 回落（Fast/HighSpeed 复用基座）
+            alias = SLUG_ALIAS.get(m)
+            if alias:
+                r2 = aa_by_norm.get(norm(alias))
+                if r2 and isinstance(r2.get("intelligence"), (int, float)): return r2["intelligence"]
+            return None
         ints = []
         for m in model_order:
-            v = goat_intel_by_norm.get(norm(m))
+            v = _intel_for(m)
             if isinstance(v, (int, float)):
                 ints.append(v)
-            else:
-                r = aa_by_norm.get(norm(m))
-                if r and isinstance(r.get("intelligence"), (int, float)):
-                    ints.append(r["intelligence"])
         y_min = max(0, math.floor(min(ints) - 2))
         y_max = math.ceil(max(ints) + 2)
         if y_max - y_min < 12:
@@ -176,10 +183,7 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
             y_max += 4
         base_data = []
         for m in model_order:
-            intel = goat_intel_by_norm.get(norm(m))
-            if intel is None:
-                r = aa_by_norm.get(norm(m))
-                intel = r.get("intelligence") if r and isinstance(r.get("intelligence"), (int, float)) else None
+            intel = _intel_for(m)
             meta = _get_model_meta_strict(m)
             base_data.append({"model": m, "intelligence": intel, **meta})
         quota_snapshots = {}

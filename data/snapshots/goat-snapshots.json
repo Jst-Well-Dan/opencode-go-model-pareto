@@ -292,7 +292,7 @@
           "requests_per_5h": 3910,
           "requests_per_week": 9780,
           "requests_per_month": 19600,
-          "intelligence": null
+          "intelligence": 55.8
         },
         {
           "model": "DeepSeek V4 Flash Fast",
@@ -300,7 +300,7 @@
           "requests_per_5h": 1040,
           "requests_per_week": 2610,
           "requests_per_month": 5210,
-          "intelligence": null
+          "intelligence": 51.8
         },
         {
           "model": "DeepSeek V4 Flash Vision (exp)",
@@ -308,7 +308,7 @@
           "requests_per_5h": 6080,
           "requests_per_week": 15200,
           "requests_per_month": 30400,
-          "intelligence": null
+          "intelligence": 51.5
         },
         {
           "model": "GLM-5.3",
@@ -444,7 +444,7 @@
           "requests_per_5h": 138,
           "requests_per_week": 346,
           "requests_per_month": 691,
-          "intelligence": null
+          "intelligence": 52.6
         },
         {
           "model": "GLM-5.2",
@@ -460,7 +460,7 @@
           "requests_per_5h": 181,
           "requests_per_week": 452,
           "requests_per_month": 904,
-          "intelligence": null
+          "intelligence": 43.0
         },
         {
           "model": "Kimi K2.7 Code",

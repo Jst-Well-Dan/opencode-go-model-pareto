@@ -2,5 +2,9 @@
   "DeepSeek V4 Flash Vision Exp": "deepseek-v4-flash-vision",
   "MiMo-V2.5": "mimo-v2-5-0424",
   "Qwen3.8 Flash": "qwen3-8-flash-next",
-  "Qwen 3.8 Flash": "qwen3-8-flash-next"
+  "Qwen 3.8 Flash": "qwen3-8-flash-next",
+  "DeepSeek V4 Flash Fast": "deepseek-v4-flash",
+  "GLM-5.2 Fast": "glm-5-2",
+  "Kimi K2.7 Code HighSpeed": "kimi-k2-7-code",
+  "DeepSeek V4 Flash Vision (exp)": "deepseek-v4-flash-vision"
 }
