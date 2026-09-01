@@ -129,8 +129,8 @@
     },
     {
       "model": "Qwen3.8 Flash",
-      "aa_model_id": null,
-      "intelligence": null
+      "aa_model_id": "qwen3-8-flash-next",
+      "intelligence": 55.8
     },
     {
       "model": "Hy4 preview",
@@ -139,5 +139,5 @@
     }
   ],
   "source_url": "https://artificialanalysis.ai/api/v2/data/llms/models",
-  "last_fetched_at": "2026-09-01T05:32:04.487926+00:00"
+  "last_fetched_at": "2026-09-01T09:32:24.553580+00:00"
 }

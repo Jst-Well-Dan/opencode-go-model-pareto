@@ -169,7 +169,7 @@
   },
   "Qwen 3.8 Flash": {
     "brand": "qwen",
-    "modality": "纯文字"
+    "modality": "多模态"
   },
   "Qwen 3.8 Max": {
     "brand": "qwen",
@@ -189,7 +189,7 @@
   },
   "Qwen3.8 Flash": {
     "brand": "qwen",
-    "modality": "纯文字"
+    "modality": "多模态"
   },
   "Qwen3.8 Max": {
     "brand": "qwen",

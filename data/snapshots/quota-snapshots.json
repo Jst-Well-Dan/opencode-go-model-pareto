@@ -998,9 +998,9 @@
         },
         {
           "model": "Qwen3.7 Max",
-          "requests_per_5h": 340,
-          "requests_per_week": 840,
-          "requests_per_month": 1690
+          "requests_per_5h": 170,
+          "requests_per_week": 420,
+          "requests_per_month": 840
         },
         {
           "model": "Qwen3.7 Plus",
@@ -1072,5 +1072,5 @@
     }
   },
   "source_url": "https://opencode.ai/docs/zh-cn/go/",
-  "last_fetched_at": "2026-09-01T05:32:04.487902+00:00"
+  "last_fetched_at": "2026-09-01T09:32:24.553558+00:00"
 }
