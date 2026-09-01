@@ -239,6 +239,7 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
         # 严格从 model-meta.json 取 brand，缺失即报错
         return _get_model_meta_strict(display)["brand"]
 
+    # curated 10 仍为默认勾选
     cmp_rows = []
     for d in CURATED_DEFS:
         o = ocr.get(d["oc_key"])
@@ -248,6 +249,29 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
             continue
         cmp_rows.append({"model": d["display"], "short": d["short"], "goat_name": g["model"], "iq": get_iq2(d["oc_key"], d["goat_key"]), "oc_m": o.get("requests_per_month"), "goat_m": g.get("requests_per_month"), "goat_credit": g.get("monthly_credits"), "brand": _brand_for_curated(d["display"])})
     cmp_rows.sort(key=lambda r: (-(r["iq"] or -1), r["model"]))
+
+    # 全量候选池：所有在 OC 与 GOAT 最新快照中均有月配额且有智力的模型（用于勾选展开）
+    full_rows = []
+    for display in sorted(MODEL_META.keys()):
+        oc_norm = norm(display)
+        goat_norm = norm(display)
+        o = ocr.get(oc_norm)
+        g = gr2.get(goat_norm)
+        if not o or not g: 
+            continue
+        if o.get("requests_per_month") is None or g.get("requests_per_month") is None:
+            continue
+        iq = get_iq2(oc_norm, goat_norm)
+        if iq is None:
+            continue
+        if any(r["model"] == display for r in full_rows):
+            continue
+        short = display if len(display) <= 16 else display[:14] + "…"
+        if display == "DeepSeek V4 Flash Vision Exp":
+            short = "DeepSeek V4 Flash Vision"
+        brand = _brand_for_curated(display) if display in MODEL_META else _get_model_meta_strict(display)["brand"]
+        full_rows.append({"model": display, "short": short, "goat_name": g["model"], "iq": iq, "oc_m": o.get("requests_per_month"), "goat_m": g.get("requests_per_month"), "goat_credit": g.get("monthly_credits"), "brand": brand})
+    full_rows.sort(key=lambda r: (-(r["iq"] or -1), r["model"]))
 
     generated_at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="minutes")
 
@@ -270,6 +294,24 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
 .win-tag{font-size:11px;font-weight:750}
 #tooltip-cmp{position:absolute;z-index:2;pointer-events:none;min-width:220px;padding:10px 12px;background:#111827;color:#fff;border-radius:9px;box-shadow:0 8px 20px #0003;font-size:.8rem;line-height:1.5;opacity:0;transform:translate(-50%,calc(-100% - 16px));transition:opacity .12s}
 #tooltip-cmp.on{opacity:1}
+.selection-panel{margin:14px 22px 0;padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px}
+.selection-header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.84rem;color:#334155}
+.selection-header b{color:#0f766e}
+.selection-header button{padding:6px 12px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-weight:650;cursor:pointer;font-size:.82rem}
+.selection-header button:hover{background:#f1f5f9}
+.selection-header button:disabled{opacity:.45;cursor:not-allowed}
+.checkbox-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:12px;max-height:220px;overflow:auto;padding:4px}
+.checkbox-grid.collapsed{max-height:108px;overflow:hidden;position:relative}
+.checkbox-grid.collapsed::after{content:"";position:absolute;left:0;right:0;bottom:0;height:36px;background:linear-gradient(to bottom,transparent,#f8fafc)}
+.checkbox-item{display:flex;gap:8px;align-items:center;padding:7px 10px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;font-size:.84rem;cursor:pointer}
+.checkbox-item input{accent-color:#0f766e}
+.checkbox-item .brand-icon{width:16px;height:16px;object-fit:contain;flex:none}
+.checkbox-item .modality{font-size:.72rem;padding:1px 6px;border-radius:999px;color:#fff;font-weight:750}
+.checkbox-item .modality.multi{background:#2563eb}
+.checkbox-item .modality.text{background:#0f766e}
+.checkbox-item.disabled{opacity:.45;cursor:not-allowed}
+.hint{font-size:.78rem;color:#64748b;margin-top:8px}
+@media(max-width:760px){.checkbox-grid{grid-template-columns:1fr}}
 """
 
     TABS_JS = """
@@ -286,7 +328,9 @@ document.querySelectorAll('.tab').forEach(btn=>{
 
     CMP_JS = f"""
 const ICONS_CMP={ICONS_OBJ};
-const DATA_CMP={json.dumps(cmp_rows, ensure_ascii=False, indent=2)};
+const FULL_DATA={json.dumps(full_rows, ensure_ascii=False, indent=2)};
+const CURATED_DATA={json.dumps(cmp_rows, ensure_ascii=False, indent=2)};
+const CURATED_DISPLAYS=CURATED_DATA.map(d=>d.model);
 const W_CMP=1040,ML_CMP=164,MR_CMP=96,MT_CMP=18,MB_CMP=42,ROWH_CMP=52;
 function fmtCmp(v){{if(v==null)return"—";if(v>=1e6)return (v/1e6).toFixed(2)+"M";if(v>=1e3)return (v/1e3).toFixed(v>=1e5?0:1)+"k";return String(v);}}
 const tooltipCmp=document.getElementById("tooltip-cmp");
@@ -294,32 +338,50 @@ function showTipCmp(html,anchor){{const r=anchor.getBoundingClientRect(),wrap=do
 function hideTipCmp(){{tooltipCmp.classList.remove("on");}}
 function iconCmp(brand,x,y,s){{let im=document.createElementNS("http://www.w3.org/2000/svg","image");im.setAttribute("href",ICONS_CMP[brand]||ICONS_CMP.unknown);im.setAttribute("x",x);im.setAttribute("y",y);im.setAttribute("width",s);im.setAttribute("height",s);im.setAttribute("preserveAspectRatio","xMidYMid meet");return im;}}
 function rowTipCmp(d){{const ratio=d.goat_m!=null&&d.oc_m?d.goat_m/d.oc_m:null;let win="";if(ratio!=null){{if(ratio>=1.05)win=` → <span style="color:#fb923c;font-weight:800">GOAT +${{((ratio-1)*100).toFixed(0)}}%</span>`;else if(ratio<=0.95)win=` → <span style="color:#60a5fa;font-weight:800">OC +${{((1/ratio-1)*100).toFixed(0)}}%</span>`;else win=" 持平";}}return `<strong>${{d.model}}</strong><span style="color:#cbd5e1;font-size:.78rem">IQ ${{d.iq!=null?d.iq.toFixed(1):"—"}}</span><span style="display:block;color:#e5e7eb">OpenCode Go 月请求：<b>${{fmtCmp(d.oc_m)}}</b></span><span style="display:block;color:#e5e7eb">Command GOAT 月请求：<b>${{fmtCmp(d.goat_m)}}</b></span><span style="display:block;color:#cbd5e1">GOAT 月档位 $${{d.goat_credit!=null?d.goat_credit:"—"}} · GOAT/OC ${{ratio!=null?(ratio*100).toFixed(0)+"%":"—"}}${{win}}</span>`;}}
-(function(){{
-const DATA=DATA_CMP, W=W_CMP, ML=ML_CMP, MR=MR_CMP, MT=MT_CMP, MB=MB_CMP, ROWH=ROWH_CMP;
-const H=MT+DATA.length*ROWH+MB;
-const svg=document.getElementById("svg-cmp");
-svg.setAttribute("height",H); svg.setAttribute("viewBox",`0 0 1040 ${{H}}`);
-const allM=DATA.map(d=>[d.oc_m,d.goat_m]).flat().filter(v=>v!=null&&v>0);
-const LO=Math.min(...allM),HI=Math.max(...allM);
-const Y0=Math.pow(10,Math.log10(LO)-0.15),Y1=Math.pow(10,Math.log10(HI)+0.12);
-function xLog(v){{return (Math.log10(v)-Math.log10(Y0))/(Math.log10(Y1)-Math.log10(Y0))*(W-ML-MR)+ML;}}
-function logTicks(lo,hi){{const out=[],seen=new Set();let p=Math.floor(Math.log10(lo));let guard=0;outer:while(p<=Math.ceil(Math.log10(hi))&&guard++<200){{for(const b of [1,2,5]){{const v=b*Math.pow(10,p);if(v>hi)break outer;if(v>=lo&&!seen.has(Math.round(v*1e4))){{out.push(v);seen.add(Math.round(v*1e4));}} }} p++;}}return out;}}
-logTicks(Y0,Y1).forEach(v=>{{const xx=xLog(v);let l=document.createElementNS("http://www.w3.org/2000/svg","line");l.setAttribute("x1",xx);l.setAttribute("y1",MT);l.setAttribute("x2",xx);l.setAttribute("y2",H-MB);l.setAttribute("stroke","#dce4ed");l.setAttribute("stroke-width","1");svg.appendChild(l);let t=document.createElementNS("http://www.w3.org/2000/svg","text");t.setAttribute("x",xx);t.setAttribute("y",H-MB+18);t.setAttribute("text-anchor","middle");t.setAttribute("fill","#64748b");t.setAttribute("font-size","11");t.textContent=fmtCmp(v);svg.appendChild(t);}});
-DATA.forEach((d,i)=>{{
-  const yc=MT+i*ROWH+ROWH/2, xo=xLog(d.oc_m), xg=xLog(d.goat_m??d.oc_m);
-  let g=document.createElementNS("http://www.w3.org/2000/svg","line");g.setAttribute("x1",ML);g.setAttribute("y1",yc);g.setAttribute("x2",W-MR);g.setAttribute("y2",yc);g.setAttribute("class","row-grid");svg.appendChild(g);
-  svg.appendChild(iconCmp(d.brand,12,yc-19,16));
-  let nm=document.createElementNS("http://www.w3.org/2000/svg","text");nm.setAttribute("x",34);nm.setAttribute("y",yc-2);nm.setAttribute("fill","#172235");nm.setAttribute("font-size","11.5");nm.setAttribute("font-weight","700");nm.textContent=d.short;svg.appendChild(nm);
-  let iq=document.createElementNS("http://www.w3.org/2000/svg","text");iq.setAttribute("x",34);iq.setAttribute("y",yc+13);iq.setAttribute("fill","#64748b");iq.setAttribute("font-size","9.5");iq.textContent=`IQ ${{d.iq!=null?d.iq.toFixed(1):"—"}}`;svg.appendChild(iq);
-  let seg=document.createElementNS("http://www.w3.org/2000/svg","line");seg.setAttribute("x1",xo);seg.setAttribute("y1",yc);seg.setAttribute("x2",xg);seg.setAttribute("y2",yc);seg.setAttribute("class","seg");seg.setAttribute("stroke",d.goat_m>d.oc_m?"#ea580c":"#2563eb");svg.appendChild(seg);
-  let o=document.createElementNS("http://www.w3.org/2000/svg","circle");o.setAttribute("cx",xo);o.setAttribute("cy",yc);o.setAttribute("r",6.5);o.setAttribute("class","dot-oc");o.addEventListener("pointerenter",()=>showTipCmp(rowTipCmp(d),o));o.addEventListener("pointerleave",hideTipCmp);svg.appendChild(o);
-  const r=7.5;let dp=document.createElementNS("http://www.w3.org/2000/svg","path");dp.setAttribute("d",`M ${{xg}} ${{yc-r}} L ${{xg+r}} ${{yc}} L ${{xg}} ${{yc+r}} L ${{xg-r}} ${{yc}} Z`);dp.setAttribute("class","dot-goat");dp.addEventListener("pointerenter",()=>showTipCmp(rowTipCmp(d),dp));dp.addEventListener("pointerleave",hideTipCmp);svg.appendChild(dp);
-  const ratio=d.goat_m!=null&&d.oc_m?d.goat_m/d.oc_m:null;
-  if(ratio!=null){{let wt=document.createElementNS("http://www.w3.org/2000/svg","text");const winner=ratio>=1.05?"GOAT":(ratio<=0.95?"OC":null);if(winner){{wt.setAttribute("x",W-MR+12);wt.setAttribute("y",yc+4);wt.setAttribute("class","win-tag");wt.setAttribute("fill",winner==="GOAT"?"#ea580c":"#2563eb");wt.textContent=`${{winner}} ${{((ratio>=1.05?((ratio-1)*100):((1/ratio-1)*100)).toFixed(0))}}%`;svg.appendChild(wt);}}else{{wt.setAttribute("x",W-MR+12);wt.setAttribute("y",yc+4);wt.setAttribute("class","win-tag");wt.setAttribute("fill","#94a3b8");wt.textContent="≈";svg.appendChild(wt);}}
-}}}});
-let cap=document.createElementNS("http://www.w3.org/2000/svg","text");cap.setAttribute("x",(ML+W-MR)/2);cap.setAttribute("y",H-10);cap.setAttribute("text-anchor","middle");cap.setAttribute("fill","#64748b");cap.setAttribute("font-size","12");cap.setAttribute("font-weight","600");cap.textContent="每月请求数 (log) →";svg.appendChild(cap);
+function drawCmp(rows){{const svg=document.getElementById("svg-cmp");svg.replaceChildren();const W=W_CMP,ML=ML_CMP,MR=MR_CMP,MT=MT_CMP,MB=MB_CMP,ROWH=ROWH_CMP;const H=MT+rows.length*ROWH+MB;svg.setAttribute("height",H);svg.setAttribute("viewBox",`0 0 1040 ${{H}}`);if(!rows.length){{let t=document.createElementNS("http://www.w3.org/2000/svg","text");t.setAttribute("x",520);t.setAttribute("y",H/2);t.setAttribute("text-anchor","middle");t.setAttribute("fill","#94a3b8");t.setAttribute("font-size","14");t.textContent="请勾选至少 1 个模型";svg.appendChild(t);return;}}const allM=rows.map(d=>[d.oc_m,d.goat_m]).flat().filter(v=>v!=null&&v>0);const LO=Math.min(...allM),HI=Math.max(...allM);const Y0=Math.pow(10,Math.log10(LO)-0.15),Y1=Math.pow(10,Math.log10(HI)+0.12);function xLog(v){{return (Math.log10(v)-Math.log10(Y0))/(Math.log10(Y1)-Math.log10(Y0))*(W-ML-MR)+ML;}}function logTicks(lo,hi){{const out=[],seen=new Set();let p=Math.floor(Math.log10(lo));let guard=0;outer:while(p<=Math.ceil(Math.log10(hi))&&guard++<200){{for(const b of [1,2,5]){{const v=b*Math.pow(10,p);if(v>hi)break outer;if(v>=lo&&!seen.has(Math.round(v*1e4))){{out.push(v);seen.add(Math.round(v*1e4));}} }} p++;}}return out;}}logTicks(Y0,Y1).forEach(v=>{{const xx=xLog(v);let l=document.createElementNS("http://www.w3.org/2000/svg","line");l.setAttribute("x1",xx);l.setAttribute("y1",MT);l.setAttribute("x2",xx);l.setAttribute("y2",H-MB);l.setAttribute("stroke","#dce4ed");l.setAttribute("stroke-width","1");svg.appendChild(l);let t=document.createElementNS("http://www.w3.org/2000/svg","text");t.setAttribute("x",xx);t.setAttribute("y",H-MB+18);t.setAttribute("text-anchor","middle");t.setAttribute("fill","#64748b");t.setAttribute("font-size","11");t.textContent=fmtCmp(v);svg.appendChild(t);}});rows.forEach((d,i)=>{{const yc=MT+i*ROWH+ROWH/2,xo=xLog(d.oc_m),xg=xLog(d.goat_m??d.oc_m);let g=document.createElementNS("http://www.w3.org/2000/svg","line");g.setAttribute("x1",ML);g.setAttribute("y1",yc);g.setAttribute("x2",W-MR);g.setAttribute("y2",yc);g.setAttribute("class","row-grid");svg.appendChild(g);svg.appendChild(iconCmp(d.brand,12,yc-19,16));let nm=document.createElementNS("http://www.w3.org/2000/svg","text");nm.setAttribute("x",34);nm.setAttribute("y",yc-2);nm.setAttribute("fill","#172235");nm.setAttribute("font-size","11.5");nm.setAttribute("font-weight","700");nm.textContent=d.short;svg.appendChild(nm);let iq=document.createElementNS("http://www.w3.org/2000/svg","text");iq.setAttribute("x",34);iq.setAttribute("y",yc+13);iq.setAttribute("fill","#64748b");iq.setAttribute("font-size","9.5");iq.textContent=`IQ ${{d.iq!=null?d.iq.toFixed(1):"—"}}`;svg.appendChild(iq);let seg=document.createElementNS("http://www.w3.org/2000/svg","line");seg.setAttribute("x1",xo);seg.setAttribute("y1",yc);seg.setAttribute("x2",xg);seg.setAttribute("y2",yc);seg.setAttribute("class","seg");seg.setAttribute("stroke",d.goat_m>d.oc_m?"#ea580c":"#2563eb");svg.appendChild(seg);let o=document.createElementNS("http://www.w3.org/2000/svg","circle");o.setAttribute("cx",xo);o.setAttribute("cy",yc);o.setAttribute("r",6.5);o.setAttribute("class","dot-oc");o.addEventListener("pointerenter",()=>showTipCmp(rowTipCmp(d),o));o.addEventListener("pointerleave",hideTipCmp);svg.appendChild(o);const r=7.5;let dp=document.createElementNS("http://www.w3.org/2000/svg","path");dp.setAttribute("d",`M ${{xg}} ${{yc-r}} L ${{xg+r}} ${{yc}} L ${{xg}} ${{yc+r}} L ${{xg-r}} ${{yc}} Z`);dp.setAttribute("class","dot-goat");dp.addEventListener("pointerenter",()=>showTipCmp(rowTipCmp(d),dp));dp.addEventListener("pointerleave",hideTipCmp);svg.appendChild(dp);const ratio=d.goat_m!=null&&d.oc_m?d.goat_m/d.oc_m:null;if(ratio!=null){{let wt=document.createElementNS("http://www.w3.org/2000/svg","text");const winner=ratio>=1.05?"GOAT":(ratio<=0.95?"OC":null);if(winner){{wt.setAttribute("x",W-MR+12);wt.setAttribute("y",yc+4);wt.setAttribute("class","win-tag");wt.setAttribute("fill",winner==="GOAT"?"#ea580c":"#2563eb");wt.textContent=`${{winner}} ${{((ratio>=1.05?((ratio-1)*100):((1/ratio-1)*100)).toFixed(0))}}%`;svg.appendChild(wt);}}else{{wt.setAttribute("x",W-MR+12);wt.setAttribute("y",yc+4);wt.setAttribute("class","win-tag");wt.setAttribute("fill","#94a3b8");wt.textContent="≈";svg.appendChild(wt);}} }});let cap=document.createElementNS("http://www.w3.org/2000/svg","text");cap.setAttribute("x",(ML+W-MR)/2);cap.setAttribute("y",H-10);cap.setAttribute("text-anchor","middle");cap.setAttribute("fill","#64748b");cap.setAttribute("font-size","12");cap.setAttribute("font-weight","600");cap.textContent="每月请求数 (log) →";svg.appendChild(cap);}}
+(function initCmpSelect(){{
+const grid=document.getElementById("checkboxGrid");
+const countEl=document.getElementById("selectedCount");
+const hintEl=document.getElementById("selectionHint");
+const expandBtn=document.getElementById("toggleExpandBtn");
+let expanded=false;
+let selected=new Set(CURATED_DISPLAYS);
+function renderGrid(){{grid.replaceChildren();FULL_DATA.forEach(d=>{{
+  const isCurated=CURATED_DISPLAYS.includes(d.model);
+  const label=document.createElement("label");
+  label.className="checkbox-item";
+  if(!expanded && !isCurated) label.style.display="none";
+  const cb=document.createElement("input");
+  cb.type="checkbox";cb.value=d.model;cb.checked=selected.has(d.model);
+  cb.addEventListener("change",()=>{{
+    if(cb.checked){{if(selected.size>=10){{cb.checked=false;hintEl.textContent="最多选择 10 个";setTimeout(()=>hintEl.textContent="",2000);return;}}selected.add(d.model);}}else{{selected.delete(d.model);}}
+    countEl.textContent=selected.size;
+    hintEl.textContent="";
+    const rows=FULL_DATA.filter(x=>selected.has(x.model)).sort((a,b)=> (b.iq||-1)-(a.iq||-1));
+    drawCmp(rows);
+  }});
+  const img=document.createElement("img");
+  img.src=ICONS_CMP[d.brand]||ICONS_CMP.unknown;img.className="brand-icon";
+  const name=document.createElement("span");
+  name.textContent=d.short+" ";
+  const iq=document.createElement("span");
+  iq.style.color="#64748b";iq.style.fontSize="12px";iq.textContent="IQ "+(d.iq!=null?d.iq.toFixed(1):"—");
+  label.append(cb,img,name,iq);
+  grid.appendChild(label);
+}});countEl.textContent=selected.size;}}
+function updateExpand(){{expanded=!expanded;grid.classList.toggle("collapsed",!expanded);expandBtn.textContent=expanded?"收起":"展开全部 ("+FULL_DATA.length+")";const extras=grid.querySelectorAll(".checkbox-item");extras.forEach((el,i)=>{{const d=FULL_DATA[i];const isCurated=CURATED_DISPLAYS.includes(d.model);if(!isCurated) el.style.display=expanded?"":"none";}});}}
+if(expandBtn) expandBtn.addEventListener("click",updateExpand);
+const resetBtn=document.getElementById("resetBtn");
+if(resetBtn) resetBtn.addEventListener("click",()=>{{selected=new Set(CURATED_DISPLAYS);renderGrid();const rows=FULL_DATA.filter(x=>selected.has(x.model)).sort((a,b)=> (b.iq||-1)-(a.iq||-1));drawCmp(rows);}});
+const clearBtn=document.getElementById("clearBtn");
+if(clearBtn) clearBtn.addEventListener("click",()=>{{selected.clear();renderGrid();drawCmp([]);countEl.textContent=0;}});
+renderGrid();
+const initRows=FULL_DATA.filter(x=>selected.has(x.model)).sort((a,b)=> (b.iq||-1)-(a.iq||-1));
+drawCmp(initRows);
+if(!expanded) grid.classList.add("collapsed");
 }})();
 """
+
 
     oc_opts = oc_payload["date_opts"]
     goat_opts = goat_payload["date_opts"]
@@ -386,7 +448,17 @@ let cap=document.createElementNS("http://www.w3.org/2000/svg","text");cap.setAtt
 <section class="panel">
 <div class="chart-head"><div><div class="eyebrow">Selected models — ranked by intelligence</div><div class="chart-title">横向哑铃排行图 · 智商降序（高 → 低）</div></div></div>
 <div class="legend"><span class="legend-key"><i class="dot-key oc"></i>OpenCode Go</span><span class="legend-key"><i class="dot-key goat"></i>Command GOAT</span><span class="legend-key" style="color:var(--muted)">右端标签：该 IQ 段赢家与幅度</span></div>
-<div class="chart-wrap" id="chartWrap-cmp"><svg class="chart" id="svg-cmp" width="1040" height="{18 + len(cmp_rows)*52 + 42}" viewBox="0 0 1040 {18 + len(cmp_rows)*52 + 42}" role="img"><title>代表模型月请求额横向哑铃图</title></svg><div id="tooltip-cmp" role="status" aria-live="polite"></div></div>
+<div class="selection-panel" id="selectionPanel">
+  <div class="selection-header">
+    <span>选择对比模型（最多 10）已选 <b id="selectedCount">10</b>/10</span>
+    <button id="toggleExpandBtn" type="button">展开全部</button>
+    <button id="resetBtn" type="button">重置为精选10</button>
+    <button id="clearBtn" type="button">清空</button>
+  </div>
+  <div class="checkbox-grid" id="checkboxGrid"></div>
+  <div class="hint" id="selectionHint"></div>
+</div>
+<div class="chart-wrap" id="chartWrap-cmp"><svg class="chart" id="svg-cmp" width="1040" height="580" viewBox="0 0 1040 580" role="img"><title>代表模型月请求额横向哑铃图</title></svg><div id="tooltip-cmp" role="status" aria-live="polite"></div></div>
 </section>
 <p class="foot">精选 {len(cmp_rows)} 个代表模型（帕累托最优前沿 ∪ DeepSeek 全部 ∪ ChatGPT/GPT ∪ MiMo V2.5 ∪ Kimi K3），按 AA 智商从高到低。数据来源：OpenCode Go 用量快照与 GOAT 核心两表，AA Intelligence Index。对数刻度；GOAT 各模型月档位 $20~$70，OpenCode 固定 $15/30/60。生成于 {generated_at}。</p>
 </section>
