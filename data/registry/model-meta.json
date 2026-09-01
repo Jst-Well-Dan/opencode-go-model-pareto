@@ -1,0 +1,214 @@
+{
+  "DeepSeek V4 Flash": {
+    "brand": "deepseek",
+    "modality": "纯文字"
+  },
+  "DeepSeek V4 Flash (latest)": {
+    "brand": "deepseek",
+    "modality": "纯文字"
+  },
+  "DeepSeek V4 Flash Fast": {
+    "brand": "deepseek",
+    "modality": "纯文字"
+  },
+  "DeepSeek V4 Flash Vision (exp)": {
+    "brand": "deepseek",
+    "modality": "多模态"
+  },
+  "DeepSeek V4 Flash Vision Exp": {
+    "brand": "deepseek",
+    "modality": "多模态"
+  },
+  "DeepSeek V4 Pro": {
+    "brand": "deepseek",
+    "modality": "纯文字"
+  },
+  "DeepSeek V4 Pro (latest)": {
+    "brand": "deepseek",
+    "modality": "纯文字"
+  },
+  "GLM-5.1": {
+    "brand": "zhipu",
+    "modality": "纯文字"
+  },
+  "GLM-5.2": {
+    "brand": "zhipu",
+    "modality": "纯文字"
+  },
+  "GLM-5.2 Fast": {
+    "brand": "zhipu",
+    "modality": "纯文字"
+  },
+  "GLM-5.3": {
+    "brand": "zhipu",
+    "modality": "纯文字"
+  },
+  "GLM-5.3 Flash": {
+    "brand": "zhipu",
+    "modality": "多模态"
+  },
+  "GLM-5.3-Flash": {
+    "brand": "zhipu",
+    "modality": "多模态"
+  },
+  "GPT 5.6 Luna": {
+    "brand": "openai",
+    "modality": "多模态"
+  },
+  "GPT-5.6 Luna": {
+    "brand": "openai",
+    "modality": "多模态"
+  },
+  "GPT-5.6 Sol": {
+    "brand": "openai",
+    "modality": "多模态"
+  },
+  "Gemini 3.7 Flash": {
+    "brand": "gemini",
+    "modality": "多模态"
+  },
+  "Grok 4.5": {
+    "brand": "grok",
+    "modality": "多模态"
+  },
+  "Grok 4.6": {
+    "brand": "grok",
+    "modality": "多模态"
+  },
+  "Hy3": {
+    "brand": "hunyuan",
+    "modality": "纯文字"
+  },
+  "Hy4 preview": {
+    "brand": "hunyuan",
+    "modality": "纯文字"
+  },
+  "Inkling": {
+    "brand": "inkling",
+    "modality": "纯文字"
+  },
+  "Inkling Small": {
+    "brand": "inkling",
+    "modality": "纯文字"
+  },
+  "Kimi K2.6": {
+    "brand": "kimi",
+    "modality": "多模态"
+  },
+  "Kimi K2.7 Code": {
+    "brand": "kimi",
+    "modality": "多模态"
+  },
+  "Kimi K2.7 Code HighSpeed": {
+    "brand": "kimi",
+    "modality": "多模态"
+  },
+  "Kimi K3": {
+    "brand": "kimi",
+    "modality": "多模态"
+  },
+  "LongCat-2.0": {
+    "brand": "longcat",
+    "modality": "纯文字"
+  },
+  "MiMo V2.5": {
+    "brand": "xiaomimimo",
+    "modality": "多模态"
+  },
+  "MiMo V2.5 Pro": {
+    "brand": "xiaomimimo",
+    "modality": "纯文字"
+  },
+  "MiMo-V2.5": {
+    "brand": "xiaomimimo",
+    "modality": "多模态"
+  },
+  "MiMo-V2.5-Pro": {
+    "brand": "xiaomimimo",
+    "modality": "纯文字"
+  },
+  "MiniMax M2.7": {
+    "brand": "minimax",
+    "modality": "纯文字"
+  },
+  "MiniMax M3": {
+    "brand": "minimax",
+    "modality": "多模态"
+  },
+  "Muse Spark 1.2": {
+    "brand": "muse",
+    "modality": "多模态"
+  },
+  "Muse Spark 1.2 Contributor": {
+    "brand": "muse",
+    "modality": "多模态"
+  },
+  "Nemotron 3 Ultra": {
+    "brand": "nemotron",
+    "modality": "纯文字"
+  },
+  "Ox Alpha Free": {
+    "brand": "ox",
+    "modality": "纯文字"
+  },
+  "Qwen 3.6 Plus": {
+    "brand": "qwen",
+    "modality": "多模态"
+  },
+  "Qwen 3.7 Max": {
+    "brand": "qwen",
+    "modality": "纯文字"
+  },
+  "Qwen 3.7 Plus": {
+    "brand": "qwen",
+    "modality": "多模态"
+  },
+  "Qwen 3.8 27B": {
+    "brand": "qwen",
+    "modality": "纯文字"
+  },
+  "Qwen 3.8 Flash": {
+    "brand": "qwen",
+    "modality": "纯文字"
+  },
+  "Qwen 3.8 Max": {
+    "brand": "qwen",
+    "modality": "多模态"
+  },
+  "Qwen3.6 Plus": {
+    "brand": "qwen",
+    "modality": "多模态"
+  },
+  "Qwen3.7 Max": {
+    "brand": "qwen",
+    "modality": "纯文字"
+  },
+  "Qwen3.7 Plus": {
+    "brand": "qwen",
+    "modality": "多模态"
+  },
+  "Qwen3.8 Flash": {
+    "brand": "qwen",
+    "modality": "纯文字"
+  },
+  "Qwen3.8 Max": {
+    "brand": "qwen",
+    "modality": "多模态"
+  },
+  "Step 3.5 Flash": {
+    "brand": "step",
+    "modality": "纯文字"
+  },
+  "Step 3.7 Flash": {
+    "brand": "step",
+    "modality": "纯文字"
+  },
+  "Tencent Hy3": {
+    "brand": "hunyuan",
+    "modality": "纯文字"
+  },
+  "Tencent Hy4 Preview": {
+    "brand": "hunyuan",
+    "modality": "纯文字"
+  }
+}

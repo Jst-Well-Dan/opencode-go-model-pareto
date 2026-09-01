@@ -126,8 +126,18 @@
       "model": "GLM-5.3-Flash",
       "aa_model_id": "glm-5-3-flash",
       "intelligence": 57.5
+    },
+    {
+      "model": "Qwen3.8 Flash",
+      "aa_model_id": null,
+      "intelligence": null
+    },
+    {
+      "model": "Hy4 preview",
+      "aa_model_id": null,
+      "intelligence": null
     }
   ],
   "source_url": "https://artificialanalysis.ai/api/v2/data/llms/models",
-  "last_fetched_at": "2026-08-27T11:00:54.171879+00:00"
+  "last_fetched_at": "2026-09-01T05:32:04.487926+00:00"
 }

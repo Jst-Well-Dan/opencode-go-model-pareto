@@ -1,0 +1,62 @@
+[
+  {
+    "oc_key": "grok46",
+    "goat_key": "grok46",
+    "display": "Grok 4.6",
+    "short": "Grok 4.6"
+  },
+  {
+    "oc_key": "kimik3",
+    "goat_key": "kimik3",
+    "display": "Kimi K3",
+    "short": "Kimi K3"
+  },
+  {
+    "oc_key": "glm53",
+    "goat_key": "glm53",
+    "display": "GLM-5.3",
+    "short": "GLM-5.3"
+  },
+  {
+    "oc_key": "glm53flash",
+    "goat_key": "glm53flash",
+    "display": "GLM-5.3-Flash",
+    "short": "GLM-5.3-Flash"
+  },
+  {
+    "oc_key": "musespark12contributor",
+    "goat_key": "musespark12contributor",
+    "display": "Muse Spark 1.2 Contributor",
+    "short": "Muse Spark"
+  },
+  {
+    "oc_key": "mimov25",
+    "goat_key": "mimov25",
+    "display": "MiMo-V2.5",
+    "short": "MiMo-V2.5"
+  },
+  {
+    "oc_key": "gpt56luna",
+    "goat_key": "gpt56luna",
+    "display": "GPT 5.6 Luna",
+    "short": "GPT 5.6 Luna"
+  },
+  {
+    "oc_key": "deepseekv4pro",
+    "goat_key": "deepseekv4prolatest",
+    "display": "DeepSeek V4 Pro",
+    "short": "DeepSeek V4 Pro"
+  },
+  {
+    "oc_key": "deepseekv4flash",
+    "goat_key": "deepseekv4flashlatest",
+    "display": "DeepSeek V4 Flash",
+    "short": "DeepSeek V4 Flash"
+  },
+  {
+    "oc_key": "deepseekv4flashvisionexp",
+    "goat_key": "deepseekv4flashvisionexp",
+    "display": "DeepSeek V4 Flash Vision Exp",
+    "short": "DeepSeek V4 Flash Vision"
+  }
+]
