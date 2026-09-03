@@ -4,15 +4,14 @@
 - 智力分：走官方 https://artificialanalysis.ai/api/v2/data/llms/models 需 x-api-key（免费 Key）
   解析失败直接抛错，交由 GitHub Actions 失败通知邮件
 - 配额：仍抓 https://opencode.ai/docs/zh-cn/go/
-- GOAT：可选 --include-goat 抓 https://commandcode.ai/docs/plans/goat 核心两表
-  （Estimated request counts + Monthly credits），严格失败不回退
+- GOAT：默认同步 https://commandcode.ai/docs/plans/goat 核心两表
+  （Estimated request counts + Monthly credits），严格失败不回退；可用 --no-include-goat 跳过
 - 模态：scrape 结果缓存到 data/aa-modality-cache.json，新模型才抓取
 
 Usage:
-    python fetch_data.py
+    python fetch_data.py                          # 默认含 GOAT
+    python fetch_data.py --no-include-goat         # 仅 OC+AA
     python fetch_data.py --date 2026-08-18 --no-generate
-    python fetch_data.py --include-goat
-    python fetch_data.py --include-goat --date 2026-08-27
 """
 
 from __future__ import annotations
@@ -731,7 +730,7 @@ def main() -> None:
     parser.add_argument("--date", default=date.today().isoformat(), help="snapshot date, default: today")
     parser.add_argument("--no-generate", action="store_true", help="only update JSON files")
     parser.add_argument("--output-dir", type=Path, help="write updated JSON/HTML under this directory instead of the project root")
-    parser.add_argument("--include-goat", action="store_true", help="also fetch GOAT plan core tables (strict failure)")
+    parser.add_argument("--include-goat", action=argparse.BooleanOptionalAction, default=True, help="also fetch GOAT plan core tables (strict failure, default: enabled; use --no-include-goat to skip)")
     args = parser.parse_args()
 
     output_dir = args.output_dir or ROOT

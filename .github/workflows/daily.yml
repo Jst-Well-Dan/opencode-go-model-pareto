@@ -35,7 +35,7 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 60
           retry_on: error
-          command: python scripts/fetch_data.py
+          command: python scripts/fetch_data.py --include-goat
         # 官方 Data API 需免费 Key（secrets.ARTIFICIAL_ANALYSIS_API_KEY），解析失败直接抛错
         # 失败时 GitHub 会自动通过 Actions 失败通知邮件提醒 Watch 者（无需额外 SMTP）
         # 如需静默跳过而非标红，可改回 run + continue-on-error: true
