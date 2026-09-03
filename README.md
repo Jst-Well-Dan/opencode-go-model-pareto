@@ -4,7 +4,9 @@
 
 ### 🌐 在线查看
 
-**https://jst-well-dan.github.io/opencode-go-model-pareto/opencode-go-model-pareto.html**
+**https://jst-well-dan.github.io/opencode-go-model-pareto/**
+
+> 旧链接 `.../opencode-go-model-pareto.html` 已保留为别名（同内容），若遇 404 请改用上方根路径（`index.html`）。
 
 无需克隆，直接打开即可切换日期（时间轴滑块 / 下拉）、切换对数/线性刻度，所有数据与图标已内联，完全支持离线可用。
 
@@ -14,15 +16,17 @@
 
 ```
 .
-├── opencode-go-model-pareto.html        # 成品主图（唯一位于根目录的单文件 HTML）
+├── index.html                           # 成品主图（GitHub Pages 入口，三图合一）
+├── opencode-go-model-pareto.html        # 同内容别名（兼容旧外链，自动同步生成）
 ├── data/
-│   ├── quota-snapshots.json             # 按日期的配额快照数据
-│   └── aa-scores.json                   # AA 智力评分数据
+│   ├── snapshots/                       # 时序快照（quota/goat/aa）
+│   ├── registry/                        # 注册表（model-meta/icons/slug-alias/curated）
+│   └── cache/                           # 缓存（aa-modality-cache，可重建）
 ├── template/
 │   └── opencode-go-model-pareto.template.html  # 主图模板（含图标与交互布局）
 └── scripts/
     ├── fetch_data.py                    # 抓取官方数据并校验生成
-    ├── generate_html.py                 # 渲染主图 HTML
+    ├── generate.py                      # 渲染主图 HTML（统一生成器，产出 index.html + 别名）
     └── generate_card.py                 # 渲染分享卡片（本地使用）
 ```
 
@@ -37,7 +41,7 @@
 python scripts/fetch_data.py
 
 # 仅重新生成主图（不发起网络请求抓取）
-python scripts/generate_html.py
+python scripts/generate.py
 
 # 生成 1080px 社交媒体分享卡片（直接产出 cards/ 目录下的 PNG）
 python scripts/generate_card.py
@@ -58,10 +62,10 @@ python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PN
 
 ### 2. 手动维护与新增模型
 
-1. **更新快照**：在 `data/quota-snapshots.json` 新增或修改日期快照（每个模型配置 `requests_per_5h` / `requests_per_week` / `requests_per_month`）。
-2. **更新评分**：在 `data/aa-scores.json` 修改或补充对应模型的 `intelligence`。
-3. **补充元信息**：若引入了**全新模型**，建议在 `scripts/generate_html.py` 的 `MODEL_META` 中配置其 `brand` 与 `modality`。未配置时**不再兜底为 `unknown/纯文字`**，而是默认抓取官网 `https://artificialanalysis.ai/models/<slug>` 的 `Input modality` 自动判定（`image` → 多模态），`brand` 按模型名前缀启发式推断；`aa_model_id` 通过 `AA_SLUG_ALIAS` + `_slug_for_model()` 自动映射。
-4. **重新渲染**：执行 `python scripts/generate_html.py`。
+1. **更新快照**：在 `data/snapshots/quota-snapshots.json` 新增或修改日期快照（每个模型配置 `requests_per_5h` / `requests_per_week` / `requests_per_month`）。
+2. **更新评分**：在 `data/snapshots/aa-scores.json` 修改或补充对应模型的 `intelligence`。
+3. **补充元信息**：若引入了**全新模型**，建议在 `data/registry/model-meta.json` 中配置其 `brand` 与 `modality`（`scripts/generate.py` 严格 require，缺失将抛错）。未配置时由 `scripts/fetch_data.py` 自动抓取官网 `https://artificialanalysis.ai/models/<slug>` 的 `Input modality` 自动判定（`image` → 多模态），`brand` 按模型名前缀启发式推断并自动写入 `data/registry/icons.json`；`aa_model_id` 通过 `data/registry/slug-alias.json` + `_slug_for_model()` 自动映射。
+4. **重新渲染**：执行 `python scripts/generate.py`。
 
 ---
 

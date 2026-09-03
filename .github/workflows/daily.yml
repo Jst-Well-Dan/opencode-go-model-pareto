@@ -45,7 +45,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [ -n "$(git status --porcelain)" ]; then
-            git add data/quota-snapshots.json data/aa-scores.json data/aa-modality-cache.json opencode-go-model-pareto.html
+            git add data/snapshots/quota-snapshots.json data/snapshots/aa-scores.json data/snapshots/goat-snapshots.json data/cache/aa-modality-cache.json data/registry/icons.json data/registry/model-meta.json index.html opencode-go-model-pareto.html
             # 若 HTML 未变化（仅时间戳变）也一并提交，确保 Pages 触发部署
             git commit -m "chore(data): daily snapshot $(date -u +%Y-%m-%d)"
             git push

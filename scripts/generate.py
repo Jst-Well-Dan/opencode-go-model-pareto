@@ -522,7 +522,13 @@ createParetoChart("goat", {json.dumps(goat_payload['base_data'], ensure_ascii=Fa
     )
 
     output_path.write_text(full_html, encoding="utf-8")
-    print(f"Generated {output_path} with OC {len(oc_payload['base_data'])} models, GOAT {len(goat_payload['base_data'])} models, CMP {len(cmp_rows)} models at {generated_at}")
+    # 兼容旧链接：同时写入 opencode-go-model-pareto.html 别名，修复外链 404
+    legacy_path = output_path.parent / "opencode-go-model-pareto.html"
+    if output_path.resolve() != legacy_path.resolve():
+        legacy_path.write_text(full_html, encoding="utf-8")
+        print(f"Generated {output_path} (+ legacy alias {legacy_path}) with OC {len(oc_payload['base_data'])} models, GOAT {len(goat_payload['base_data'])} models, CMP {len(cmp_rows)} models at {generated_at}")
+    else:
+        print(f"Generated {output_path} with OC {len(oc_payload['base_data'])} models, GOAT {len(goat_payload['base_data'])} models, CMP {len(cmp_rows)} models at {generated_at}")
 
 
 def main() -> None:
