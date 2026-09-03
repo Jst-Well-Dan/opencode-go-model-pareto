@@ -1,6 +1,6 @@
 {
   "source_url": "https://commandcode.ai/docs/plans/goat",
-  "last_fetched_at": "2026-09-01T05:32:38.011385+00:00",
+  "last_fetched_at": "2026-09-03T12:30:20.531090+00:00",
   "normalization_reference": {
     "model": "MiMo V2.5",
     "requests_per_5h": 19500
@@ -268,8 +268,317 @@
       ]
     },
     "2026-09-01": {
+      "label": "",
+      "models": [
+        {
+          "model": "Tencent Hy4 Preview",
+          "monthly_credits": 20,
+          "requests_per_5h": 1220,
+          "requests_per_week": 3060,
+          "requests_per_month": 6120,
+          "intelligence": null
+        },
+        {
+          "model": "GLM-5.3 Flash",
+          "monthly_credits": 40,
+          "requests_per_5h": 4720,
+          "requests_per_week": 11800,
+          "requests_per_month": 23600,
+          "intelligence": 57.5
+        },
+        {
+          "model": "Qwen 3.8 Flash",
+          "monthly_credits": 20,
+          "requests_per_5h": 3910,
+          "requests_per_week": 9780,
+          "requests_per_month": 19600,
+          "intelligence": 55.8
+        },
+        {
+          "model": "DeepSeek V4 Flash Fast",
+          "monthly_credits": 20,
+          "requests_per_5h": 1040,
+          "requests_per_week": 2610,
+          "requests_per_month": 5210,
+          "intelligence": 51.8
+        },
+        {
+          "model": "DeepSeek V4 Flash Vision (exp)",
+          "monthly_credits": 20,
+          "requests_per_5h": 6080,
+          "requests_per_week": 15200,
+          "requests_per_month": 30400,
+          "intelligence": 51.5
+        },
+        {
+          "model": "GLM-5.3",
+          "monthly_credits": 20,
+          "requests_per_5h": 271,
+          "requests_per_week": 677,
+          "requests_per_month": 1350,
+          "intelligence": 59.5
+        },
+        {
+          "model": "Qwen 3.8 27B",
+          "monthly_credits": 70,
+          "requests_per_5h": 4790,
+          "requests_per_week": 12000,
+          "requests_per_month": 24000,
+          "intelligence": 52.0
+        },
+        {
+          "model": "DeepSeek V4 Pro (latest)",
+          "monthly_credits": 20,
+          "requests_per_5h": 1980,
+          "requests_per_week": 4940,
+          "requests_per_month": 9880,
+          "intelligence": 53.2
+        },
+        {
+          "model": "Gemini 3.7 Flash",
+          "monthly_credits": 40,
+          "requests_per_5h": 784,
+          "requests_per_week": 1960,
+          "requests_per_month": 3920,
+          "intelligence": 56.0
+        },
+        {
+          "model": "Grok 4.6",
+          "monthly_credits": 20,
+          "requests_per_5h": 144,
+          "requests_per_week": 360,
+          "requests_per_month": 719,
+          "intelligence": 60.9
+        },
+        {
+          "model": "Muse Spark 1.2",
+          "monthly_credits": 20,
+          "requests_per_5h": 428,
+          "requests_per_week": 1070,
+          "requests_per_month": 2140,
+          "intelligence": 56.8
+        },
+        {
+          "model": "Muse Spark 1.2 Contributor",
+          "monthly_credits": 20,
+          "requests_per_5h": 18200,
+          "requests_per_week": 45500,
+          "requests_per_month": 90900,
+          "intelligence": 56.8
+        },
+        {
+          "model": "Qwen 3.8 Max",
+          "monthly_credits": 20,
+          "requests_per_5h": 261,
+          "requests_per_week": 654,
+          "requests_per_month": 1310,
+          "intelligence": 58.1
+        },
+        {
+          "model": "DeepSeek V4 Flash (latest)",
+          "monthly_credits": 60,
+          "requests_per_5h": 18200,
+          "requests_per_week": 45600,
+          "requests_per_month": 91200,
+          "intelligence": 52.0
+        },
+        {
+          "model": "Inkling Small",
+          "monthly_credits": 20,
+          "requests_per_5h": 709,
+          "requests_per_week": 1770,
+          "requests_per_month": 3550,
+          "intelligence": 41.2
+        },
+        {
+          "model": "Inkling",
+          "monthly_credits": 20,
+          "requests_per_5h": 396,
+          "requests_per_week": 989,
+          "requests_per_month": 1980,
+          "intelligence": 42.3
+        },
+        {
+          "model": "Kimi K3",
+          "monthly_credits": 20,
+          "requests_per_5h": 196,
+          "requests_per_week": 490,
+          "requests_per_month": 980,
+          "intelligence": 59.7
+        },
+        {
+          "model": "GPT-5.6 Luna",
+          "monthly_credits": 20,
+          "requests_per_5h": 2960,
+          "requests_per_week": 7400,
+          "requests_per_month": 14800,
+          "intelligence": 52.3
+        },
+        {
+          "model": "GPT-5.6 Sol",
+          "monthly_credits": 70,
+          "requests_per_5h": 414,
+          "requests_per_week": 1040,
+          "requests_per_month": 2070,
+          "intelligence": 60.9
+        },
+        {
+          "model": "Grok 4.5",
+          "monthly_credits": 20,
+          "requests_per_5h": 144,
+          "requests_per_week": 360,
+          "requests_per_month": 719,
+          "intelligence": 55.8
+        },
+        {
+          "model": "Tencent Hy3",
+          "monthly_credits": 70,
+          "requests_per_5h": 7080,
+          "requests_per_week": 17700,
+          "requests_per_month": 35400,
+          "intelligence": 42.2
+        },
+        {
+          "model": "GLM-5.2 Fast",
+          "monthly_credits": 20,
+          "requests_per_5h": 138,
+          "requests_per_week": 346,
+          "requests_per_month": 691,
+          "intelligence": 52.6
+        },
+        {
+          "model": "GLM-5.2",
+          "monthly_credits": 70,
+          "requests_per_5h": 947,
+          "requests_per_week": 2370,
+          "requests_per_month": 4740,
+          "intelligence": 52.6
+        },
+        {
+          "model": "Kimi K2.7 Code HighSpeed",
+          "monthly_credits": 20,
+          "requests_per_5h": 181,
+          "requests_per_week": 452,
+          "requests_per_month": 904,
+          "intelligence": 43.0
+        },
+        {
+          "model": "Kimi K2.7 Code",
+          "monthly_credits": 60,
+          "requests_per_5h": 1080,
+          "requests_per_week": 2710,
+          "requests_per_month": 5420,
+          "intelligence": 43.0
+        },
+        {
+          "model": "Nemotron 3 Ultra",
+          "monthly_credits": 20,
+          "requests_per_5h": 575,
+          "requests_per_week": 1440,
+          "requests_per_month": 2870,
+          "intelligence": 38.3
+        },
+        {
+          "model": "MiniMax M3",
+          "monthly_credits": 47,
+          "requests_per_5h": 2770,
+          "requests_per_week": 6930,
+          "requests_per_month": 13900,
+          "intelligence": 45.4
+        },
+        {
+          "model": "Qwen 3.7 Plus",
+          "monthly_credits": 33,
+          "requests_per_5h": 1420,
+          "requests_per_week": 3560,
+          "requests_per_month": 7110,
+          "intelligence": 39.4
+        },
+        {
+          "model": "Step 3.7 Flash",
+          "monthly_credits": 20,
+          "requests_per_5h": 1670,
+          "requests_per_week": 4180,
+          "requests_per_month": 8370,
+          "intelligence": 30.9
+        },
+        {
+          "model": "MiMo V2.5",
+          "monthly_credits": 30,
+          "requests_per_5h": 19500,
+          "requests_per_week": 48700,
+          "requests_per_month": 97400,
+          "intelligence": 38.0
+        },
+        {
+          "model": "MiMo V2.5 Pro",
+          "monthly_credits": 20,
+          "requests_per_5h": 5700,
+          "requests_per_week": 14200,
+          "requests_per_month": 28500,
+          "intelligence": 42.9
+        },
+        {
+          "model": "Qwen 3.7 Max",
+          "monthly_credits": 33,
+          "requests_per_5h": 232,
+          "requests_per_week": 579,
+          "requests_per_month": 1160,
+          "intelligence": 46.7
+        },
+        {
+          "model": "Step 3.5 Flash",
+          "monthly_credits": 20,
+          "requests_per_5h": 3510,
+          "requests_per_week": 8770,
+          "requests_per_month": 17500,
+          "intelligence": 26.5
+        },
+        {
+          "model": "Qwen 3.6 Plus",
+          "monthly_credits": 33,
+          "requests_per_5h": 1100,
+          "requests_per_week": 2750,
+          "requests_per_month": 5500,
+          "intelligence": 40.5
+        }
+      ]
+    },
+    "2026-09-03": {
       "label": "今日",
       "models": [
+        {
+          "model": "Gemini 3.8 Flash",
+          "monthly_credits": 40,
+          "requests_per_5h": 784,
+          "requests_per_week": 1960,
+          "requests_per_month": 3920,
+          "intelligence": null
+        },
+        {
+          "model": "Muse Spark 1.3",
+          "monthly_credits": 20,
+          "requests_per_5h": 428,
+          "requests_per_week": 1070,
+          "requests_per_month": 2140,
+          "intelligence": null
+        },
+        {
+          "model": "Muse Spark 1.3 Contributor",
+          "monthly_credits": 20,
+          "requests_per_5h": 18200,
+          "requests_per_week": 45500,
+          "requests_per_month": 90900,
+          "intelligence": null
+        },
+        {
+          "model": "Qwen 3.8 Max 0902",
+          "monthly_credits": 20,
+          "requests_per_5h": 261,
+          "requests_per_week": 654,
+          "requests_per_month": 1310,
+          "intelligence": null
+        },
         {
           "model": "Tencent Hy4 Preview",
           "monthly_credits": 20,

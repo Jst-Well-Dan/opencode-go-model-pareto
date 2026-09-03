@@ -67,6 +67,10 @@
     "brand": "gemini",
     "modality": "多模态"
   },
+  "Gemini 3.8 Flash": {
+    "brand": "gemini",
+    "modality": "多模态"
+  },
   "Grok 4.5": {
     "brand": "grok",
     "modality": "多模态"
@@ -143,6 +147,14 @@
     "brand": "muse",
     "modality": "多模态"
   },
+  "Muse Spark 1.3": {
+    "brand": "muse",
+    "modality": "多模态"
+  },
+  "Muse Spark 1.3 Contributor": {
+    "brand": "muse",
+    "modality": "纯文字"
+  },
   "Nemotron 3 Ultra": {
     "brand": "nemotron",
     "modality": "纯文字"
@@ -174,6 +186,10 @@
   "Qwen 3.8 Max": {
     "brand": "qwen",
     "modality": "多模态"
+  },
+  "Qwen 3.8 Max 0902": {
+    "brand": "qwen",
+    "modality": "纯文字"
   },
   "Qwen3.6 Plus": {
     "brand": "qwen",
