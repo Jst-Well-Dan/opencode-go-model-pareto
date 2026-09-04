@@ -1,6 +1,6 @@
 {
   "source_url": "https://commandcode.ai/docs/plans/goat",
-  "last_fetched_at": "2026-09-03T12:30:20.531090+00:00",
+  "last_fetched_at": "2026-09-04T05:39:04.544411+00:00",
   "normalization_reference": {
     "model": "MiMo V2.5",
     "requests_per_5h": 19500
@@ -544,7 +544,7 @@
         }
       ]
     },
-    "2026-09-03": {
+    "2026-09-04": {
       "label": "今日",
       "models": [
         {
