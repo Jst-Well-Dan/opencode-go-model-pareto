@@ -161,6 +161,9 @@ def fetch(url: str, retries: int = 5, timeout: int = 45, headers: dict[str, str]
             is_retryable_5xx = isinstance(error, HTTPError) and status is not None and 500 <= status < 600
             is_timeout = isinstance(error, (TimeoutError, URLError)) or "timed out" in str(error).lower()
             is_rate_limit = status == 429
+            if status == 404:
+                # 404 不会因重试而恢复（slug 错误或页面不存在），直接失败由上层如实上报
+                break
             if attempt + 1 >= retries:
                 break
             base = 4 * (2**attempt) if (is_retryable_5xx or is_timeout or is_rate_limit) else 2**attempt
@@ -433,8 +436,10 @@ def _save_modality_cache(cache: dict[str, str]) -> None:
     tmp.replace(MODALITY_CACHE_PATH)
 
 
-def scrape_aa_modality(slug: str) -> str | None:
-    """带缓存的抓取：历史结果从 data/aa-modality-cache.json 读取，新 slug 才请求官网"""
+def scrape_aa_modality(slug: str) -> str:
+    """抓取官网 Input modality。严格模式：404（slug 拼错或 AA 尚未收录）与解析失败一律抛错，
+    不回落默认值；由调用方阻断本次更新并经由 Actions 失败通知人工处理
+    （变体行请在 data/registry/slug-alias.json 补映射后重跑）。"""
     cache = _load_modality_cache()
     if slug in cache and cache[slug] in ("多模态", "纯文字"):
         return cache[slug]
@@ -442,20 +447,22 @@ def scrape_aa_modality(slug: str) -> str | None:
     try:
         html = fetch(url, retries=3, timeout=30)
     except Exception as e:
-        print(f"scrape modality for {slug} failed: {e}", file=sys.stderr)
-        return None
+        if "404" in str(e):
+            raise RuntimeError(
+                f"AA 页面 404：{url}（slug={slug} 可能拼错或 AA 尚未收录；"
+                f"若是变体行请在 data/registry/slug-alias.json 补映射）: {e}"
+            )
+        raise RuntimeError(f"抓取 AA 模态页失败：{url}: {e}")
     m = re.search(r'Input modality.*?sr-only"><p>Supports:\s*([^<]+)</p>', html, re.S | re.I)
     if not m:
-        print(f"scrape modality for {slug}: pattern not found", file=sys.stderr)
-        return None
+        raise RuntimeError(f"AA 模态解析失败：{url} 页面存在但未匹配到 Input modality（官网结构可能变更）")
     supports = m.group(1).strip().lower()
-    result = None
-    if "image" in supports:
+    if "image" in supports or "video" in supports:
         result = "多模态"
     elif "text" in supports:
         result = "纯文字"
     else:
-        return None
+        raise RuntimeError(f"AA 模态值未知：{url} Supports={m.group(1).strip()!r}")
     # 写回缓存
     cache[slug] = result
     try:
@@ -546,16 +553,11 @@ def _ensure_model_meta_entry(model: str, brand: str, modality: str) -> None:
     print(f"auto-added model-meta {model} -> {brand}/{modality}")
 
 def ensure_modality_and_icon_for_models(models: list[str]) -> None:
-    """严格模式：为新增模型列表确保模态缓存与图标，抓取失败则回落纯文字并告警（AA 未收录时 404 属正常）"""
+    """严格模式：为新增模型列表确保模态与图标。模态抓取失败（404/解析失败）直接抛错阻断，
+    不回落默认值；由 GitHub Actions 失败通知人工处理。"""
     for model in models:
         slug = _slug_for_model(model)
-        modality = scrape_aa_modality(slug)
-        if modality not in ("多模态", "纯文字"):
-            # 严格模式下：若 AA 页面 404（新模型尚未上榜）则 WARN + 回落纯文字，不阻断；仅当页面存在但解析失败才抛错
-            # 这里 scrape 已在 404 时返回 None，我们统一视为 WARN 回落
-            print(f"WARN 模态自动抓取未命中：{model} -> slug={slug} 暂无 AA 页面，回落为 纯文字（待 AA 收录后自动校正）", file=sys.stderr)
-            modality = "纯文字"
-            # 不写入缓存，待下次 AA 上线后重新抓取得到真实值
+        modality = scrape_aa_modality(slug)  # 失败即抛错，不兜底
         # 推断 brand
         low = model.lower()
         if low.startswith("grok"): brand="grok"

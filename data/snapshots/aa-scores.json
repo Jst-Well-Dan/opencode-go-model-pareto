@@ -139,13 +139,23 @@
     },
     {
       "model": "Muse Spark 1.3 Contributor",
-      "aa_model_id": null,
-      "intelligence": null
+      "aa_model_id": "muse-spark-1-3",
+      "intelligence": 62.1
     },
     {
       "model": "Omen Alpha",
       "aa_model_id": null,
       "intelligence": null
+    },
+    {
+      "model": "Gemini 3.8 Flash",
+      "aa_model_id": "gemini-3-8-flash",
+      "intelligence": 58.7
+    },
+    {
+      "model": "Gemini 3.7 Flash",
+      "aa_model_id": "gemini-3-7-flash",
+      "intelligence": 56.0
     }
   ],
   "source_url": "https://artificialanalysis.ai/api/v2/data/llms/models",
