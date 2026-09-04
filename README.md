@@ -20,7 +20,7 @@
 ├── opencode-go-model-pareto.html        # 同内容别名（兼容旧外链，自动同步生成）
 ├── data/
 │   ├── snapshots/                       # 时序快照（quota/goat/aa）
-│   ├── registry/                        # 注册表（model-meta/icons/slug-alias/curated）
+│   ├── registry/                        # 注册表（model-meta/icons/slug-alias/crosswalk/curated）
 │   └── cache/                           # 缓存（aa-modality-cache，可重建）
 ├── template/
 │   └── opencode-go-model-pareto.template.html  # 主图模板（含图标与交互布局）

@@ -38,6 +38,7 @@ def _load_json_strict(path: Path, name: str):
 MODEL_META = _load_json_strict(ROOT / "data" / "registry" / "model-meta.json", "model-meta")
 CURATED_DEFS = _load_json_strict(ROOT / "data" / "registry" / "curated-defs.json", "curated-defs")
 SLUG_ALIAS = _load_json_strict(ROOT / "data" / "registry" / "slug-alias.json", "slug-alias")
+CROSSWALK = _load_json_strict(ROOT / "data" / "registry" / "crosswalk.json", "crosswalk")
 ICONS_DATA = _load_json_strict(ROOT / "data" / "registry" / "icons.json", "icons")
 
 def _slug_for_model(m: str) -> str:
@@ -218,6 +219,10 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
     # comparison payload (精选 10)
     ocr = {norm(r["model"]): r for r in oc_doc["snapshots"][max(oc_doc["snapshots"])]["models"]}
     gr2 = {norm(r["model"]): r for r in goat_doc["snapshots"][max(goat_doc["snapshots"])]["models"]}
+    # 跨套餐变体归一：GOAT 变体名经 crosswalk 折叠到标准名后索引（DeepSeek (latest)/(exp)、Tencent 前缀等）
+    goat_canon: dict[str, dict] = {}
+    for _gr in goat_doc["snapshots"][max(goat_doc["snapshots"])]["models"]:
+        goat_canon.setdefault(norm(CROSSWALK.get(_gr["model"], _gr["model"])), _gr)
     aa_by2 = {}
     for rr in aa_doc["models"]:
         for k in [rr["model"], rr.get("aa_model_id")]:
@@ -259,12 +264,14 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
         oc_norm = norm(display)
         goat_norm = norm(display)
         o = ocr.get(oc_norm)
-        g = gr2.get(goat_norm)
+        g = goat_canon.get(goat_norm)
         if not o or not g: 
             continue
         if o.get("requests_per_month") is None or g.get("requests_per_month") is None:
             continue
-        iq = get_iq2(oc_norm, goat_norm)
+        # 智力优先取 GOAT 行自带分（与 GOAT 帕累托同口径），缺失再回落 AA
+        g_intel = g.get("intelligence")
+        iq = g_intel if isinstance(g_intel, (int, float)) else get_iq2(oc_norm, goat_norm)
         if iq is None:
             continue
         if any(r["model"] == display for r in full_rows):
