@@ -317,7 +317,6 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
 .selection-bar{display:flex;align-items:center;gap:10px}
 .selection-title{font-weight:750;color:#0f172a;font-size:.9rem}
 .count-pill{display:inline-block;min-width:44px;text-align:center;padding:2px 10px;border-radius:999px;background:#eef2f7;color:#475569;font-size:.8rem;font-weight:700}
-.count-pill.full{background:var(--teal);color:#fff}
 .expand-btn{margin-left:auto;padding:6px 14px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-weight:650;cursor:pointer;font-size:.82rem}
 .expand-btn:hover{background:#f1f5f9}
 .selection-body{display:grid;grid-template-rows:1fr;opacity:1;transition:grid-template-rows .22s ease-out,opacity .18s ease-out}
@@ -368,18 +367,11 @@ function drawCmp(rows){{const svg=document.getElementById("svg-cmp");svg.replace
 (function initCmpSelect(){{
 const grid=document.getElementById("checkboxGrid");
 const countEl=document.getElementById("selectedCount");
-const pill=document.getElementById("countPill");
 const meta=document.getElementById("selectionMeta");
 const expandBtn=document.getElementById("toggleExpandBtn");
 const body=document.getElementById("selectionBody");
 let selected=new Set(CURATED_DISPLAYS.filter(m=>FULL_DATA.some(x=>x.model===m)));
-function refreshCount(){{countEl.textContent=selected.size;pill.classList.toggle("full",selected.size>=10);}}
-function refreshDisabled(){{grid.querySelectorAll(".checkbox-item").forEach(label=>{{
-  const cb=label.querySelector("input");
-  const locked=!cb.checked&&selected.size>=10;
-  cb.disabled=locked;label.classList.toggle("disabled",locked);
-  if(locked)label.title="最多选择 10 个";else label.removeAttribute("title");
-}});}}
+function refreshCount(){{countEl.textContent=selected.size;}}
 function currentRows(){{return FULL_DATA.filter(x=>selected.has(x.model)).sort((a,b)=> (b.iq||-1)-(a.iq||-1));}}
 function renderGrid(){{grid.replaceChildren();FULL_DATA.forEach(d=>{{
   const label=document.createElement("label");
@@ -387,8 +379,8 @@ function renderGrid(){{grid.replaceChildren();FULL_DATA.forEach(d=>{{
   const cb=document.createElement("input");
   cb.type="checkbox";cb.value=d.model;cb.checked=selected.has(d.model);
   cb.addEventListener("change",()=>{{
-    if(cb.checked){{if(selected.size>=10){{cb.checked=false;return;}}selected.add(d.model);}}else{{selected.delete(d.model);}}
-    refreshCount();refreshDisabled();
+    if(cb.checked){{selected.add(d.model);}}else{{selected.delete(d.model);}}
+    refreshCount();
     drawCmp(currentRows());
   }});
   const img=document.createElement("img");
@@ -399,7 +391,7 @@ function renderGrid(){{grid.replaceChildren();FULL_DATA.forEach(d=>{{
   iq.style.color="#64748b";iq.style.fontSize="12px";iq.textContent="IQ "+(d.iq!=null?d.iq.toFixed(1):"—");
   label.append(cb,img,name,iq);
   grid.appendChild(label);
-}});refreshCount();refreshDisabled();}}
+}});refreshCount();}}
 function setExpanded(v){{body.classList.toggle("collapsed",!v);expandBtn.setAttribute("aria-expanded",String(v));expandBtn.textContent=v?"收起 ▴":"展开 ▾";}}
 if(expandBtn)expandBtn.addEventListener("click",()=>setExpanded(body.classList.contains("collapsed")));
 const resetBtn=document.getElementById("resetBtn");
@@ -482,7 +474,7 @@ drawCmp(currentRows());
 <div class="selection-panel" id="selectionPanel">
   <div class="selection-bar">
     <span class="selection-title">对比模型</span>
-    <span class="count-pill" id="countPill"><b id="selectedCount">8</b>/10</span>
+    <span class="count-pill" id="countPill">已选 <b id="selectedCount">10</b></span>
     <button id="toggleExpandBtn" class="expand-btn" type="button" aria-expanded="false" aria-controls="selectionBody">展开 ▾</button>
   </div>
   <div class="selection-body collapsed" id="selectionBody">
