@@ -251,7 +251,10 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
     cmp_rows.sort(key=lambda r: (-(r["iq"] or -1), r["model"]))
 
     # 全量候选池：所有在 OC 与 GOAT 最新快照中均有月配额且有智力的模型（用于勾选展开）
+    # OC 与 GOAT 两边命名常不一致（空格/连字符/有无空格，如 "Qwen 3.8 Max" vs "Qwen3.8 Max"），
+    # 同一底座会进池两次，故按命中的底层行去重；精选 display 优先保留，保证默认勾选能命中。
     full_rows = []
+    curated_set = {d["display"] for d in CURATED_DEFS}
     for display in sorted(MODEL_META.keys()):
         oc_norm = norm(display)
         goat_norm = norm(display)
@@ -270,8 +273,17 @@ def generate(template_path: Path, oc_quota_path: Path, goat_quota_path: Path, aa
         if display == "DeepSeek V4 Flash Vision Exp":
             short = "DeepSeek V4 Flash Vision"
         brand = _brand_for_curated(display) if display in MODEL_META else _get_model_meta_strict(display)["brand"]
-        full_rows.append({"model": display, "short": short, "goat_name": g["model"], "iq": iq, "oc_m": o.get("requests_per_month"), "goat_m": g.get("requests_per_month"), "goat_credit": g.get("monthly_credits"), "brand": brand})
-    full_rows.sort(key=lambda r: (-(r["iq"] or -1), r["model"]))
+        full_rows.append({"model": display, "short": short, "goat_name": g["model"], "iq": iq, "oc_m": o.get("requests_per_month"), "goat_m": g.get("requests_per_month"), "goat_credit": g.get("monthly_credits"), "brand": brand, "_key": (norm(o["model"]), norm(g["model"]))})
+    full_rows.sort(key=lambda r: (r["model"] not in curated_set, r["model"]))
+    seen_keys: set = set()
+    deduped = []
+    for r in full_rows:
+        if r["_key"] in seen_keys:
+            continue
+        seen_keys.add(r["_key"])
+        deduped.append({k: v for k, v in r.items() if k != "_key"})
+    deduped.sort(key=lambda r: (-(r["iq"] or -1), r["model"]))
+    full_rows = deduped
 
     generated_at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="minutes")
 
