@@ -20,7 +20,7 @@
     {
       "model": "GLM-5.2",
       "aa_model_id": "glm-5-2",
-      "intelligence": 42.5
+      "intelligence": 42.1
     },
     {
       "model": "GLM-5.1",
@@ -35,7 +35,7 @@
     {
       "model": "Kimi K2.7 Code",
       "aa_model_id": "kimi-k2-7-code",
-      "intelligence": 33.9
+      "intelligence": 32.7
     },
     {
       "model": "Kimi K2.6",
@@ -45,7 +45,7 @@
     {
       "model": "MiMo-V2.5",
       "aa_model_id": "mimo-v2-5-0424",
-      "intelligence": 29.5
+      "intelligence": 28.2
     },
     {
       "model": "MiMo-V2.5-Pro",
@@ -75,12 +75,12 @@
     {
       "model": "Qwen3.7 Max",
       "aa_model_id": "qwen3-7-max",
-      "intelligence": 37.0
+      "intelligence": 36.6
     },
     {
       "model": "Qwen3.7 Plus",
       "aa_model_id": "qwen3-7-plus",
-      "intelligence": 30.8
+      "intelligence": 31.9
     },
     {
       "model": "Qwen3.6 Plus",
@@ -100,12 +100,12 @@
     {
       "model": "Hy3",
       "aa_model_id": "hy3",
-      "intelligence": 33.2
+      "intelligence": 32.4
     },
     {
       "model": "DeepSeek V4 Flash Vision Exp",
       "aa_model_id": "deepseek-v4-flash-vision",
-      "intelligence": 41.5
+      "intelligence": 40.7
     },
     {
       "model": "Ox Alpha Free",
@@ -159,5 +159,5 @@
     }
   ],
   "source_url": "https://artificialanalysis.ai/api/v2/data/llms/models",
-  "last_fetched_at": "2026-09-07T05:50:27.655416+00:00"
+  "last_fetched_at": "2026-09-08T05:43:38.968113+00:00"
 }
