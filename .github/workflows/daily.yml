@@ -35,7 +35,7 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 60
           retry_on: error
-          command: python scripts/fetch_data.py --include-goat
+          command: python scripts/fetch_data.py
         # 官方 Data API 需免费 Key（secrets.ARTIFICIAL_ANALYSIS_API_KEY），解析失败直接抛错
         # 失败时 GitHub 会自动通过 Actions 失败通知邮件提醒 Watch 者（无需额外 SMTP）
         # 如需静默跳过而非标红，可改回 run + continue-on-error: true
@@ -45,7 +45,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [ -n "$(git status --porcelain)" ]; then
-            git add data/snapshots/quota-snapshots.json data/snapshots/aa-scores.json data/snapshots/goat-snapshots.json data/cache/aa-modality-cache.json data/registry/icons.json data/registry/model-meta.json index.html opencode-go-model-pareto.html
+            git add data/snapshots/quota-snapshots.json data/snapshots/aa-scores.json data/cache/aa-modality-cache.json data/registry/icons.json data/registry/model-meta.json index.html
             # 若 HTML 未变化（仅时间戳变）也一并提交，确保 Pages 触发部署
             git commit -m "chore(data): daily snapshot $(date -u +%Y-%m-%d)"
             git push

@@ -56,6 +56,16 @@ def norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+def aa_models_for_date(aa: dict, day: str) -> list[dict]:
+    snapshots = aa.get("snapshots")
+    if not isinstance(snapshots, dict):
+        return aa.get("models", [])
+    dates = sorted(snapshots)
+    candidates = [d for d in dates if d <= day]
+    chosen = max(candidates) if candidates else dates[0]
+    return snapshots[chosen].get("models", [])
+
+
 def load_icons() -> dict:
     return dict(ICONS_JSON)
 
@@ -104,9 +114,16 @@ def _infer_goat_brand(m: str) -> str:
 
 
 # ---------- SVG helpers ----------
-def build_pareto_svg(pts, frontier, refs, xMax, icons, W=1000, H=420):
+def build_pareto_svg(pts, frontier, refs, xMax, icons, W=1000, H=420, yMin=None, yMax=None):
     M = {"l": 74, "r": 18, "t": 26, "b": 42}
-    yMin, yMax = 36, 62
+    values = [p["intel"] for p in pts if isinstance(p.get("intel"), (int, float))]
+    if yMin is None:
+        yMin = max(0, math.floor(min(values) - 2))
+    if yMax is None:
+        yMax = math.ceil(max(values) + 2)
+    if yMax - yMin < 12:
+        yMin = max(0, yMin - 4)
+        yMax += 4
 
     def x(v):
         return M["l"] + math.log10(v) / math.log10(xMax) * (W - M["l"] - M["r"])
@@ -117,7 +134,9 @@ def build_pareto_svg(pts, frontier, refs, xMax, icons, W=1000, H=420):
     svg_parts = []
     svg_parts.append(f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" role="img">')
     svg_parts.append('<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#0f766e"/></marker></defs>')
-    for v in [36, 40, 44, 48, 52, 56, 60]:
+    tick_min = math.ceil(yMin / 4) * 4
+    tick_max = math.floor(yMax / 4) * 4
+    for v in range(tick_min, tick_max + 1, 4):
         svg_parts.append(f'<line x1="{M["l"]}" y1="{y(v):.1f}" x2="{W-M["r"]}" y2="{y(v):.1f}" stroke="#e8eef5" stroke-width="1"/>')
         svg_parts.append(f'<text x="{M["l"]-10}" y="{y(v)+4:.1f}" text-anchor="end" font-size="11" fill="#64748b" font-family="system-ui">{v}</text>')
     for v in [1, 2, 5, 10, 20, 50, 100, 200, 400]:
@@ -240,33 +259,38 @@ def build_cmp_svg(rows, icons, W=1000, MT=18, MB=42, ROWH=52):
 
 # ---------- card builders ----------
 
-def build_oc_card(date, quota, aa, icons):
+def build_oc_dataset(date, quota, aa):
     latest = max(quota["snapshots"])
-    _tracked = [r["requests_per_5h"] for r in quota["snapshots"][latest]["models"] if r["requests_per_5h"]]
-    ref = max(_tracked)
-    xMax_global = ref / min(_tracked)
-    aa_map = {m["model"]: m["intelligence"] for m in aa["models"]}
-    snap = quota["snapshots"][date]["models"]
-    snap_by = {r["model"]: r for r in snap}
+    baseline = quota["snapshots"][latest]["models"]
+    tracked = [r["requests_per_5h"] for r in baseline if r["requests_per_5h"]]
+    ref = max(tracked)
+    x_max = ref / min(tracked)
+    aa_map = {m["model"]: m["intelligence"] for m in aa_models_for_date(aa, date)}
+    snap_by = {r["model"]: r for r in quota["snapshots"][date]["models"]}
     pts = []
-    for model in [r["model"] for r in quota["snapshots"][latest]["models"]]:
-        if model not in snap_by:
-            continue
-        r = snap_by[model]
-        if not r["requests_per_5h"] or aa_map.get(model) is None:
+    for model in [r["model"] for r in baseline]:
+        r = snap_by.get(model)
+        if not r or not r["requests_per_5h"] or aa_map.get(model) is None:
             continue
         meta = _get_model_meta_strict_card(model)
         pts.append({"model": model, "requests": r["requests_per_5h"], "intel": aa_map[model], "cost": ref / r["requests_per_5h"], "brand": meta["brand"], "modality": meta["modality"]})
     for p in pts:
         p["pareto"] = is_pareto(p, pts)
     refs = []
-    for model in [r["model"] for r in quota["snapshots"][latest]["models"]]:
+    for model in [r["model"] for r in baseline]:
         r = snap_by.get(model)
-        if r is None or aa_map.get(model) is not None:
+        if not r or aa_map.get(model) is not None:
             continue
         meta = _get_model_meta_strict_card(model)
         refs.append({"model": model, "cost": (ref / r["requests_per_5h"]) if r["requests_per_5h"] else None, "free": not r["requests_per_5h"], "brand": meta["brand"]})
     frontier = sorted([p for p in pts if p["pareto"]], key=lambda x: x["cost"])
+    base_model = max((r for r in baseline if r["requests_per_5h"]), key=lambda r: r["requests_per_5h"])
+    return pts, frontier, refs, x_max, base_model
+
+
+def build_oc_card(date, quota, aa, icons):
+    latest = max(quota["snapshots"])
+    pts, frontier, refs, xMax_global, base_model = build_oc_dataset(date, quota, aa)
     label = quota["snapshots"][date].get("label", "")
     badge_label = f"{label}快照" if label == "今日" else (label or date)
     count, fcount = len(pts), len(frontier)
@@ -286,8 +310,6 @@ def build_oc_card(date, quota, aa, icons):
     <div class="winner-stats"><div class="stat cost"><label>相对成本</label><strong>{p["cost"]:.2f}</strong></div><div class="stat intel"><label>AA 智力</label><strong>{p["intel"]:.1f}</strong></div></div>
     <div class="winner-note">配额 <b>{p["requests"]:,} / 5h</b> · 智力 {p["intel"]:.1f}</div>
   </div>'''
-    baseline = quota["snapshots"][latest]["models"]
-    base_model = max((r for r in baseline if r["requests_per_5h"]), key=lambda r: r["requests_per_5h"])
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OpenCode Go 帕累托最优 · {date} · 分享卡片</title>
@@ -339,7 +361,7 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 <span style="margin-left:auto;color:#94a3b8">对数刻度 · 基准 {base_model["model"]} ({base_model["requests_per_5h"]:,} / 5h)</span></div>
 {svg_str}</div><div class="winners">{winners_html}</div>
 <div class="foot"><div>数据来源：<a href="https://opencode.ai/docs/zh-cn/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 相对成本以配额最多者为 1.0<br>
-生成时间 {date} · 已嵌入全部数据，无需联网 · <span style="color:#64748b">opencode-go-model-pareto.html</span> · <a href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" style="color:#0f766e;font-weight:650;text-decoration:none;border-bottom:1px dashed #99f6e4">GitHub: Jst-Well-Dan/opencode-go-model-pareto</a></div>
+生成时间 {date} · 已嵌入全部数据，无需联网 · <span style="color:#64748b">index.html</span> · <a href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" style="color:#0f766e;font-weight:650;text-decoration:none;border-bottom:1px dashed #99f6e4">GitHub: Jst-Well-Dan/opencode-go-model-pareto</a></div>
 </div></div></div></body></html>''', frontier
 
 
@@ -348,14 +370,14 @@ def build_goat_card(date, goat_quota, aa, icons):
     _tracked = [r["requests_per_5h"] for r in goat_quota["snapshots"][latest]["models"] if r["requests_per_5h"]]
     ref = max(_tracked)
     xMax_global = ref / min(_tracked)
-    # intelligence: goat primary
+    # intelligence: date snapshot primary
     goat_intel = {}
-    for m in goat_quota["snapshots"][latest]["models"]:
+    for m in goat_quota["snapshots"][date]["models"]:
         if isinstance(m.get("intelligence"), (int, float)):
             goat_intel[norm(m["model"])] = m["intelligence"]
-    aa_map = {m["model"]: m["intelligence"] for m in aa["models"]}
+    aa_map = {m["model"]: m["intelligence"] for m in aa_models_for_date(aa, date)}
     aa_by_norm = {}
-    for r in aa["models"]:
+    for r in aa_models_for_date(aa, date):
         for k in [r["model"], r.get("aa_model_id") or ""]:
             if k:
                 aa_by_norm[norm(k)] = r
@@ -469,7 +491,7 @@ def build_comparison_card(oc_quota, goat_quota, aa, icons):
     ocr = {norm(r["model"]): r for r in oc_quota["snapshots"][ocd]["models"]}
     gr = {norm(r["model"]): r for r in goat_quota["snapshots"][god]["models"]}
     aa_by = {}
-    for rr in aa["models"]:
+    for rr in aa_models_for_date(aa, god):
         for k in [rr["model"], rr.get("aa_model_id")]:
             if k and norm(k):
                 aa_by[norm(k)] = rr.get("intelligence")

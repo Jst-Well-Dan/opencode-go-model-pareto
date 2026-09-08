@@ -6,7 +6,6 @@
 
 **https://jst-well-dan.github.io/opencode-go-model-pareto/**
 
-> 旧链接 `.../opencode-go-model-pareto.html` 已保留为别名（同内容），若遇 404 请改用上方根路径（`index.html`）。
 
 无需克隆，直接打开即可切换日期（时间轴滑块 / 下拉）、切换对数/线性刻度，所有数据与图标已内联，完全支持离线可用。
 
@@ -16,18 +15,20 @@
 
 ```
 .
-├── index.html                           # 成品主图（GitHub Pages 入口，三图合一）
-├── opencode-go-model-pareto.html        # 同内容别名（兼容旧外链，自动同步生成）
+├── index.html                           # 成品主图（GitHub Pages 入口，仅 OpenCode Go 单页）
+├── goat-compare-archive.html            # 存档冻结页（Command GOAT + 对比，已停止更新）
+├── archive/                             # 归档的 GOAT 相关代码（备用，不参与每日任务）
 ├── data/
-│   ├── snapshots/                       # 时序快照（quota/goat/aa）
+│   ├── snapshots/                       # 时序快照（quota/aa；goat 已冻结不再新增）
 │   ├── registry/                        # 注册表（model-meta/icons/slug-alias/crosswalk/curated）
 │   └── cache/                           # 缓存（aa-modality-cache，可重建）
 ├── template/
 │   └── opencode-go-model-pareto.template.html  # 主图模板（含图标与交互布局）
 └── scripts/
-    ├── fetch_data.py                    # 抓取官方数据并校验生成
-    ├── generate.py                      # 渲染主图 HTML（统一生成器，产出 index.html + 别名）
-    └── generate_card.py                 # 渲染分享卡片（本地使用）
+    ├── fetch_data.py                    # 抓取 OpenCode 配额 + AA 评分并校验生成（仅 OC）
+    ├── generate.py                      # 渲染主图 HTML（OC 单页生成器，产出 index.html + 别名）
+    ├── generate_card.py                 # 渲染今天的分享卡片（本地使用）
+    └── generate_rank_change.py          # 生成独立的 AA 前后排名 HTML 卡片
 ```
 
 ---
@@ -43,8 +44,11 @@ python scripts/fetch_data.py
 # 仅重新生成主图（不发起网络请求抓取）
 python scripts/generate.py
 
-# 生成 1080px 社交媒体分享卡片（直接产出 cards/ 目录下的 PNG）
+# 生成今天的 1080px OpenCode 社交媒体分享卡片
 python scripts/generate_card.py
+
+# 单独生成 AA 评分标准变化前后的 OpenCode 排名 HTML 卡片
+python scripts/generate_rank_change.py
 ```
 
 数据来源：
@@ -63,7 +67,7 @@ python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PN
 ### 2. 手动维护与新增模型
 
 1. **更新快照**：在 `data/snapshots/quota-snapshots.json` 新增或修改日期快照（每个模型配置 `requests_per_5h` / `requests_per_week` / `requests_per_month`）。
-2. **更新评分**：在 `data/snapshots/aa-scores.json` 修改或补充对应模型的 `intelligence`。
+2. **更新评分**：在 `data/snapshots/aa-scores.json` 对应日期快照中修改或补充模型的 `intelligence`；时间轴会同步显示各日期的评分标准。
 3. **补充元信息**：若引入了**全新模型**，建议在 `data/registry/model-meta.json` 中配置其 `brand` 与 `modality`（`scripts/generate.py` 严格 require，缺失将抛错）。未配置时由 `scripts/fetch_data.py` 自动抓取官网 `https://artificialanalysis.ai/models/<slug>` 的 `Input modality` 自动判定（`image` → 多模态），`brand` 按模型名前缀启发式推断并自动写入 `data/registry/icons.json`；`aa_model_id` 通过 `data/registry/slug-alias.json` + `_slug_for_model()` 自动映射。
 4. **重新渲染**：执行 `python scripts/generate.py`。
 
@@ -75,7 +79,7 @@ python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PN
 - **相对配额成本**：$\text{相对成本} = \frac{\text{基准配额}}{\text{模型自身配额}}$。
 - **基准设定**：基准动态取**最新快照中的最大配额值**（当前为 `Muse Spark 1.2 Contributor` 的 45,300 次/5h）。因此最慷慨的模型相对成本恒为 `1.0`。
 - **动态横轴 $x_{\max}$**：横轴最大值动态计算为 $\frac{\text{基准配额}}{\text{最小配额}}$（当前为 411.8），确保所有低配额模型完全落入图表可视区域内，避免固定刻度导致越界。
-- **动态纵轴 $y_{\min}/y_{\max}$**：纵轴不再固定 `36–62`，改为基于 `aa-scores.json` 中实际 `intelligence` 分布动态计算：`y_min = max(0, floor(min-2))`、`y_max = ceil(max+2)`，跨度 `<12` 时各向外扩 `4`，刻度以 `__Y_TICKS__`（步长 `4`）注入模板，解决 `LongCat-2.0`（34.0）等低分越界问题。
+- **动态纵轴 $y_{\min}/y_{\max}$**：纵轴按当前日期快照中的 `intelligence` 分布动态计算：`y_min = max(0, floor(min-2))`、`y_max = ceil(max+2)`，跨度 `<12` 时各向外扩 `4`，刻度以日期快照注入模板，适配评分标准切换。
 
 ### 2. 容错机制与异常值处理
 - **空配额/免费档**：线上配额为 `-` 的模型（如免费档 `Ox Alpha Free`）标记为 `cost: null`，不参与帕累托计算，在横轴最左端以虚线头像锚定展示（`免费 · 不限`）。
@@ -85,7 +89,7 @@ python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PN
 - **新模型模态**：`MODEL_META` 缺失时不再兜底为 `unknown/纯文字`，而是默认抓取官网 `https://artificialanalysis.ai/models/<slug>` 的 `Input modality`（`Supports: text and image` → 多模态）自动判定，`brand` 按前缀推断；失败才抛错提示手填。
 
 ### 3. 时间轴与交互
-- 顶部支持滑块拖动（`◀ 拖动 ▶`）与下拉菜单双控，支持 90+ 天历史快照回溯。
+- 顶部支持滑块拖动（`◀ 拖动 ▶`）与下拉菜单双控，支持历史配额与 AA 分数快照回溯。
 - 支持线性刻度与对数刻度（Log Scale）一键平滑切换。
 
 ### 4. 社交分享卡片
@@ -110,17 +114,20 @@ python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PN
     }
   }
   ```
-- **`data/aa-scores.json`**（`source_url` 为镜像 `https://aihot.virxact.com/leaderboard/methodology`，含 `aa_model_id` 映射）
+- **`data/snapshots/aa-scores.json`**（官方 Data API 的 `artificial_analysis_intelligence_index`，按日期保留快照）
   ```json
   {
-    "source_url": "https://aihot.virxact.com/leaderboard/methodology",
-    "models": [
-      { "model": "GLM-5.3", "aa_model_id": "glm-5-3", "intelligence": 59.5 },
-      { "model": "LongCat-2.0", "aa_model_id": "longcat-2-0", "intelligence": 34.0 }
-    ]
+    "source_url": "https://artificialanalysis.ai/api/v2/data/llms/models",
+    "snapshots": {
+      "2026-09-05": {
+        "models": [
+          { "model": "GLM-5.3", "aa_model_id": "glm-5-3", "intelligence": 48.6 }
+        ]
+      }
+    }
   }
   ```
-  > 字段以 `model` 为主键（历史文档中 `name` 为旧称，已统一为 `model`）。
+  > 字段以 `model` 为主键；旧版扁平 `models` 结构已迁移为日期快照。
 
 ---
 
