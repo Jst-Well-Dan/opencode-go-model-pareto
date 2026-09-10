@@ -27,6 +27,10 @@
     "brand": "deepseek",
     "modality": "纯文字"
   },
+  "DeepSeek V4.1 Flash": {
+    "brand": "deepseek",
+    "modality": "未知"
+  },
   "GLM-5.1": {
     "brand": "zhipu",
     "modality": "纯文字"

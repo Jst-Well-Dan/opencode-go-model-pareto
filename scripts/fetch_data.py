@@ -370,12 +370,21 @@ def _ensure_model_meta_entry(model: str, brand: str, modality: str) -> None:
     tmp.replace(p)
     print(f"auto-added model-meta {model} -> {brand}/{modality}")
 
+UNKNOWN_MODALITY = "未知"
+
+
 def ensure_modality_and_icon_for_models(models: list[str]) -> None:
-    """严格模式：为新增模型列表确保模态与图标。模态抓取失败（404/解析失败）直接抛错阻断，
-    不回落默认值；由 GitHub Actions 失败通知人工处理。"""
+    """降级模式：为新增模型列表确保模态与图标。模态抓取失败（AA 404/解析失败，
+    常见于 AA 尚未收录的新模型）时记为 "未知" 并告警，不阻断整日更新；
+    前端以灰色 ? 徽章展示，有分正常画点、无分走虚线+缺失面板。
+    图标缺失仍抛错（新厂商需人工确认 logo）。"""
     for model in models:
         slug = _slug_for_model(model)
-        modality = scrape_aa_modality(slug)  # 失败即抛错，不兜底
+        try:
+            modality = scrape_aa_modality(slug)
+        except Exception as e:
+            print(f"modality unknown for {model!r} (slug={slug})，记为'未知'稍后回填: {e}", file=sys.stderr)
+            modality = UNKNOWN_MODALITY
         # 推断 brand
         low = model.lower()
         if low.startswith("grok"): brand="grok"
@@ -397,6 +406,39 @@ def ensure_modality_and_icon_for_models(models: list[str]) -> None:
         else: brand="unknown"
         _ensure_model_meta_entry(model, brand, modality)
         ensure_icon_for_brand(brand, slug)
+
+
+def _backfill_unknown_modalities() -> None:
+    """每日自愈：对 model-meta.json 里模态为"未知"的模型重试抓取，
+    AA 收录后自动回填为多模态/纯文字；仍失败则保持未知并告警。"""
+    p = ROOT / "data" / "registry" / "model-meta.json"
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"backfill skipped, failed to load {p}: {e}", file=sys.stderr)
+        return
+    pending = [m for m, v in data.items()
+               if isinstance(v, dict) and v.get("modality") == UNKNOWN_MODALITY]
+    if not pending:
+        return
+    changed = False
+    for model in pending:
+        slug = _slug_for_model(model)
+        try:
+            modality = scrape_aa_modality(slug)
+        except Exception as e:
+            print(f"backfill still unknown: {model!r} (slug={slug}): {e}", file=sys.stderr)
+            continue
+        data[model]["modality"] = modality
+        changed = True
+        print(f"backfilled modality {model!r} -> {modality}")
+    if changed:
+        ordered = {k: data[k] for k in sorted(data)}
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=p.parent, delete=False) as h:
+            json.dump(ordered, h, ensure_ascii=False, indent=2)
+            h.write("\n")
+            tmp = Path(h.name)
+        tmp.replace(p)
 
 
 def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
@@ -433,8 +475,10 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
         print(f"Models removed from OpenCode page (dropped from latest, kept in history): {removed}", file=sys.stderr)
     if added:
         print(f"New models on the OpenCode page (added): {added}")
-        # 严格自动抓取模态+图标，失败抛错阻断
+        # 自动抓取模态+图标；模态缺失降级为"未知"不阻断
         ensure_modality_and_icon_for_models(added)
+    # 每日对模态未知的旧模型重试回填（AA 收录后自愈）
+    _backfill_unknown_modalities()
     ordered_models = [m for m in reference_models if m not in removed] + added
     quota_by_model = {row["model"]: row for row in quota_rows}
     snapshot_models = []

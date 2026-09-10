@@ -47,7 +47,7 @@ def _get_model_meta_strict_card(m: str) -> dict:
     if m not in MODEL_META:
         raise RuntimeError(f"model {m!r} not found in data/model-meta.json — 请先通过 fetch_data 自动写入或手工追加")
     v = MODEL_META[m]
-    if v.get("modality") not in ("多模态", "纯文字"):
+    if v.get("modality") not in ("多模态", "纯文字", "未知"):
         raise RuntimeError(f"data/model-meta.json modality for {m!r} invalid: {v}")
     return v
 
@@ -158,8 +158,8 @@ def build_pareto_svg(pts, frontier, refs, xMax, icons, W=1000, H=420, yMin=None,
         cx, cy = x(p["cost"]), y(p["intel"])
         stroke = "#ea580c" if p["pareto"] else "#cbd5e1"
         sw = "3.6" if p["pareto"] else "1.4"
-        badge_color = "#2563eb" if p["modality"] == "多模态" else "#0f766e"
-        badge_mark = "M" if p["modality"] == "多模态" else "T"
+        badge_color = {"多模态": "#2563eb", "纯文字": "#0f766e"}.get(p["modality"], "#94a3b8")
+        badge_mark = {"多模态": "M", "纯文字": "T"}.get(p["modality"], "?")
         href = icons.get(p["brand"], icons.get("unknown", ""))
         svg_parts.append(f'<g transform="translate({cx:.1f} {cy:.1f})">')
         svg_parts.append(f'<circle r="17" fill="#fff" stroke="{stroke}" stroke-width="{sw}"/>')
@@ -305,7 +305,7 @@ def build_oc_card(date, quota, aa, icons):
     <div class="rank gold">0{i+1}</div>
     <div class="winner-head">
       <div class="avatar"><img src="{icons.get(p["brand"], icons.get("unknown",""))}" alt="{p["model"]}"></div>
-      <div><div class="winner-name">{p["model"]}</div><div class="winner-meta"><span class="tag {"m" if p["modality"]=="多模态" else "t"}">{"M" if p["modality"]=="多模态" else "T"}</span> {p["modality"]} · {bname}</div></div>
+      <div><div class="winner-name">{p["model"]}</div><div class="winner-meta"><span class="tag {"m" if p["modality"]=="多模态" else ("t" if p["modality"]=="纯文字" else "u")}">{"M" if p["modality"]=="多模态" else ("T" if p["modality"]=="纯文字" else "?")}</span> {p["modality"]} · {bname}</div></div>
     </div>
     <div class="winner-stats"><div class="stat cost"><label>相对成本</label><strong>{p["cost"]:.2f}</strong></div><div class="stat intel"><label>AA 智力</label><strong>{p["intel"]:.1f}</strong></div></div>
     <div class="winner-note">配额 <b>{p["requests"]:,} / 5h</b> · 智力 {p["intel"]:.1f}</div>
@@ -336,13 +336,14 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 .dot{{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--orange);background:#fff;display:inline-block}}.line{{width:18px;height:3px;border-radius:2px;background:var(--orange);display:inline-block}}
 .legend-m{{width:16px;height:16px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}}
 .legend-t{{width:16px;height:16px;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}}
+.legend-u{{width:16px;height:16px;border-radius:50%;background:#94a3b8;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}}
 .winners{{padding:18px 32px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}}
 .winner{{position:relative;background:#fff;border:1.5px solid #e2e8f0;border-radius:18px;padding:16px 16px 14px;overflow:hidden}}
 .winner.optimal{{border-color:#fed7aa;box-shadow:0 8px 20px rgba(234,88,12,.10)}}.winner.optimal::before{{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#ea580c,#f59e0b)}}
 .rank{{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:50%;background:#0f172a;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}}.rank.gold{{background:linear-gradient(135deg,#ea580c,#f59e0b)}}
 .winner-head{{display:flex;gap:12px;align-items:center}}.avatar{{width:44px;height:44px;border-radius:50%;background:#fff;border:1.5px solid #e2e8f0;display:grid;place-items:center;overflow:hidden;flex:none;padding:6px}}.avatar img{{width:100%;height:100%;object-fit:contain}}
 .winner-name{{font-weight:800;font-size:15px;line-height:1.25}}.winner-meta{{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;margin-top:2px}}
-.tag{{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;color:#fff;font-size:9px;font-weight:800}}.tag.m{{background:var(--blue)}}.tag.t{{background:var(--teal)}}
+.tag{{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;color:#fff;font-size:9px;font-weight:800}}.tag.m{{background:var(--blue)}}.tag.t{{background:var(--teal)}}.tag.u{{background:#94a3b8}}
 .winner-stats{{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;background:#f8fafc;border-radius:12px;padding:11px 12px}}
 .stat label{{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;font-weight:700}}.stat strong{{display:block;font-size:18px;line-height:1.1;margin-top:2px;letter-spacing:-.02em}}.stat.cost strong{{color:var(--orange)}}.stat.intel strong{{color:var(--teal)}}.winner-note{{margin-top:10px;font-size:12px;color:#64748b;line-height:1.5}}
 .foot{{padding:16px 32px 22px;display:flex;justify-content:space-between;gap:16px;align-items:flex-end;color:#94a3b8;font-size:11.5px;line-height:1.6;border-top:1px solid #f1f5f9;margin-top:18px}}.foot a{{color:#64748b;text-decoration:none;border-bottom:1px dashed #cbd5e1}}
@@ -358,6 +359,7 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="line"></i> 最优前沿</span>
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-m">M</i> 多模态</span>
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-t">T</i> 纯文字</span>
+<span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-u">?</i> 模态未知</span>
 <span style="margin-left:auto;color:#94a3b8">对数刻度 · 基准 {base_model["model"]} ({base_model["requests_per_5h"]:,} / 5h)</span></div>
 {svg_str}</div><div class="winners">{winners_html}</div>
 <div class="foot"><div>数据来源：<a href="https://opencode.ai/docs/zh-cn/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 相对成本以配额最多者为 1.0<br>
@@ -423,7 +425,7 @@ def build_goat_card(date, goat_quota, aa, icons):
     <div class="rank gold">0{i+1}</div>
     <div class="winner-head">
       <div class="avatar"><img src="{icons.get(p["brand"], icons.get("unknown",""))}" alt="{p["model"]}"></div>
-      <div><div class="winner-name">{p["model"]}</div><div class="winner-meta"><span class="tag {"m" if p["modality"]=="多模态" else "t"}">{"M" if p["modality"]=="多模态" else "T"}</span> {p["modality"]} · {bname}</div></div>
+      <div><div class="winner-name">{p["model"]}</div><div class="winner-meta"><span class="tag {"m" if p["modality"]=="多模态" else ("t" if p["modality"]=="纯文字" else "u")}">{"M" if p["modality"]=="多模态" else ("T" if p["modality"]=="纯文字" else "?")}</span> {p["modality"]} · {bname}</div></div>
     </div>
     <div class="winner-stats"><div class="stat cost"><label>相对成本</label><strong>{p["cost"]:.2f}</strong></div><div class="stat intel"><label>AA 智力</label><strong>{p["intel"]:.1f}</strong></div></div>
     <div class="winner-note">配额 <b>{p["requests"]:,} / 5h</b> · 智力 {p["intel"]:.1f}</div>
@@ -456,13 +458,14 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 .dot{{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--orange);background:#fff;display:inline-block}}.line{{width:18px;height:3px;border-radius:2px;background:var(--orange);display:inline-block}}
 .legend-m{{width:16px;height:16px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}}
 .legend-t{{width:16px;height:16px;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}}
+.legend-u{{width:16px;height:16px;border-radius:50%;background:#94a3b8;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}}
 .winners{{padding:18px 32px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}}
 .winner{{position:relative;background:#fff;border:1.5px solid #e2e8f0;border-radius:18px;padding:16px 16px 14px;overflow:hidden}}
 .winner.optimal{{border-color:#fed7aa;box-shadow:0 8px 20px rgba(234,88,12,.10)}}.winner.optimal::before{{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#ea580c,#f59e0b)}}
 .rank{{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:50%;background:#0f172a;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}}.rank.gold{{background:linear-gradient(135deg,#ea580c,#f59e0b)}}
 .winner-head{{display:flex;gap:12px;align-items:center}}.avatar{{width:44px;height:44px;border-radius:50%;background:#fff;border:1.5px solid #e2e8f0;display:grid;place-items:center;overflow:hidden;flex:none;padding:6px}}.avatar img{{width:100%;height:100%;object-fit:contain}}
 .winner-name{{font-weight:800;font-size:15px;line-height:1.25}}.winner-meta{{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;margin-top:2px}}
-.tag{{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;color:#fff;font-size:9px;font-weight:800}}.tag.m{{background:var(--blue)}}.tag.t{{background:var(--teal)}}
+.tag{{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;color:#fff;font-size:9px;font-weight:800}}.tag.m{{background:var(--blue)}}.tag.t{{background:var(--teal)}}.tag.u{{background:#94a3b8}}
 .winner-stats{{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;background:#f8fafc;border-radius:12px;padding:11px 12px}}
 .stat label{{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;font-weight:700}}.stat strong{{display:block;font-size:18px;line-height:1.1;margin-top:2px;letter-spacing:-.02em}}.stat.cost strong{{color:var(--orange)}}.stat.intel strong{{color:var(--teal)}}.winner-note{{margin-top:10px;font-size:12px;color:#64748b;line-height:1.5}}
 .foot{{padding:16px 32px 22px;display:flex;justify-content:space-between;gap:16px;align-items:flex-end;color:#94a3b8;font-size:11.5px;line-height:1.6;border-top:1px solid #f1f5f9;margin-top:18px}}.foot a{{color:#64748b;text-decoration:none;border-bottom:1px dashed #cbd5e1}}
@@ -478,6 +481,7 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="line"></i> 最优前沿</span>
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-m">M</i> 多模态</span>
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-t">T</i> 纯文字</span>
+<span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-u">?</i> 模态未知</span>
 <span style="margin-left:auto;color:#94a3b8">对数刻度 · 基准 {base_model["model"]} ({base_model["requests_per_5h"]:,} / 5h)</span></div>
 {svg_str}</div><div class="winners">{winners_html}</div>
 <div class="foot"><div>数据来源：<a href="https://commandcode.ai/docs/plans/goat">Command GOAT</a> 核心两表 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 相对成本以配额最多者为 1.0<br>

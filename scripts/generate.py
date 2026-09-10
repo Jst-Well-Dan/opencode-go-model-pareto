@@ -38,12 +38,12 @@ ICONS_DATA = _load_json_strict(ROOT / "data" / "registry" / "icons.json", "icons
 
 def _get_model_meta_strict(m: str) -> dict[str, str]:
     if m not in MODEL_META:
-        raise RuntimeError(f"model {m!r} not found in data/model-meta.json — 请在该文件中追加 {{\"brand\": ..., \"modality\": \"多模态/纯文字\"}}")
+        raise RuntimeError(f"model {m!r} not found in data/model-meta.json — 请在该文件中追加 {{\"brand\": ..., \"modality\": \"多模态/纯文字/未知\"}}")
     v = MODEL_META[m]
     if not isinstance(v, dict) or "brand" not in v or "modality" not in v:
         raise RuntimeError(f"data/model-meta.json entry for {m!r} malformed: {v}")
-    if v["modality"] not in ("多模态", "纯文字"):
-        raise RuntimeError(f"data/model-meta.json modality for {m!r} must be 多模态/纯文字, got {v['modality']}")
+    if v["modality"] not in ("多模态", "纯文字", "未知"):
+        raise RuntimeError(f"data/model-meta.json modality for {m!r} must be 多模态/纯文字/未知, got {v['modality']}")
     return v
 
 def load(p: Path):
@@ -182,7 +182,7 @@ def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_pat
 <section class="panel" aria-labelledby="chart-title-oc">
 <div class="chart-head"><div><div class="eyebrow">Pareto optimal · OpenCode Go</div><div class="chart-title" id="chart-title-oc">模型效能分布</div></div><div class="controls"><div class="control-group"><label for="dateSelect-oc">数据日期</label><select id="dateSelect-oc">{oc_opts}</select></div><div class="control-group"><span>横轴刻度</span><button id="logBtn-oc" class="active" type="button" aria-pressed="true">对数</button><button id="linearBtn-oc" type="button" aria-pressed="false">线性</button></div></div></div>
 <div class="timeline" id="timeline-oc"><button id="prevBtn-oc" class="pill" type="button">◀</button><input type="range" id="dateRange-oc"><button id="nextBtn-oc" class="pill" type="button">▶</button><span class="date-chip" id="dateChip-oc"></span></div>
-<div class="legend"><span class="legend-key"><i class="ring-key"></i>橙色外环：帕累托最优</span><span class="legend-key"><i class="line-key"></i>帕累托最优连线</span><span class="legend-key"><i class="badge-key multi">M</i>多模态</span><span class="legend-key"><i class="badge-key text">T</i>纯文字</span><span class="legend-key"><i class="ref-key"></i>虚线头像：无 AA 分</span></div>
+<div class="legend"><span class="legend-key"><i class="ring-key"></i>橙色外环：帕累托最优</span><span class="legend-key"><i class="line-key"></i>帕累托最优连线</span><span class="legend-key"><i class="badge-key multi">M</i>多模态</span><span class="legend-key"><i class="badge-key text">T</i>纯文字</span><span class="legend-key"><i class="badge-key unknown">?</i>模态未知（AA 未收录）</span><span class="legend-key"><i class="ref-key"></i>虚线头像：无 AA 分</span></div>
 <div class="chart-wrap" id="chartWrap-oc"><svg class="chart" id="chart-oc" viewBox="0 0 1080 560" role="img"><title>AA 智力指数与相对配额成本散点图</title></svg><div class="tooltip" id="tooltip-oc" role="status" aria-live="polite"></div></div>
 </section>
 <div class="below">
@@ -208,7 +208,7 @@ function createParetoChart(prefix, baseData, quotaSnapshots, scoreSnapshots, yRa
   const cardsEl=document.getElementById("cards-"+prefix), missingPanel=document.getElementById("missingPanel-"+prefix), missingRow=document.getElementById("missingRow-"+prefix), missingDateEl=document.getElementById("missingDate-"+prefix), footRef=document.getElementById("footRef-"+prefix);
   const NS="http://www.w3.org/2000/svg", W=1080, H=560, M={l:75,r:35,t:42,b:72};
   let scaleMode="log", activeYMin=yMin, activeYMax=yMax, activeYTicks=yTicks;
-  const modalityMeta={"多模态":{mark:"M",cls:"multi"},"纯文字":{mark:"T",cls:"text"}};
+  const modalityMeta={"多模态":{mark:"M",cls:"multi"},"纯文字":{mark:"T",cls:"text"},"未知":{mark:"?",cls:"unknown"}};
   const icons=""" + ICONS_OBJ + """;
   function node(tag,attrs={},text=""){const el=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));if(text)el.textContent=text;return el;}
   function x(v){const t=scaleMode==="log"?Math.log10(v)/Math.log10(xMax):(v-1)/(xMax-1);return M.l+t*(W-M.l-M.r);}
