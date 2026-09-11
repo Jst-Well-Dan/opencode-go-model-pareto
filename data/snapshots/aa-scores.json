@@ -2,7 +2,7 @@
   "metric": "AA Intelligence Index",
   "source": "https://aihot.virxact.com/leaderboard/methodology",
   "source_url": "https://artificialanalysis.ai/api/v2/data/llms/models",
-  "last_fetched_at": "2026-09-10T13:41:37.656790+00:00",
+  "last_fetched_at": "2026-09-11T05:42:16.292347+00:00",
   "snapshots": {
     "2026-08-17": {
       "label": "",
@@ -2075,7 +2075,7 @@
       ]
     },
     "2026-09-10": {
-      "label": "今日",
+      "label": "",
       "models": [
         {
           "model": "Grok 4.5",
@@ -2236,6 +2236,171 @@
           "model": "DeepSeek V4.1 Flash",
           "aa_model_id": null,
           "intelligence": null
+        }
+      ]
+    },
+    "2026-09-11": {
+      "label": "今日",
+      "models": [
+        {
+          "model": "Grok 4.5",
+          "aa_model_id": "grok-4-5",
+          "intelligence": 39.1
+        },
+        {
+          "model": "GPT 5.6 Luna",
+          "aa_model_id": "gpt-5-6-luna",
+          "intelligence": 37.5
+        },
+        {
+          "model": "GLM-5.3",
+          "aa_model_id": "glm-5-3",
+          "intelligence": 44.9
+        },
+        {
+          "model": "GLM-5.2",
+          "aa_model_id": "glm-5-2",
+          "intelligence": 38.6
+        },
+        {
+          "model": "GLM-5.1",
+          "aa_model_id": "glm-5-1",
+          "intelligence": 26.4
+        },
+        {
+          "model": "Kimi K3",
+          "aa_model_id": "kimi-k3",
+          "intelligence": 43.8
+        },
+        {
+          "model": "Kimi K2.7 Code",
+          "aa_model_id": "kimi-k2-7-code",
+          "intelligence": 26.3
+        },
+        {
+          "model": "Kimi K2.6",
+          "aa_model_id": "kimi-k2-6",
+          "intelligence": 31.3
+        },
+        {
+          "model": "MiMo-V2.5",
+          "aa_model_id": "mimo-v2-5-0424",
+          "intelligence": 22.3
+        },
+        {
+          "model": "MiMo-V2.5-Pro",
+          "aa_model_id": "mimo-v2-5-pro",
+          "intelligence": 26.4
+        },
+        {
+          "model": "MiniMax M3",
+          "aa_model_id": "minimax-m3",
+          "intelligence": 29.6
+        },
+        {
+          "model": "MiniMax M2.7",
+          "aa_model_id": "minimax-m2-7",
+          "intelligence": 23.2
+        },
+        {
+          "model": "Muse Spark 1.2 Contributor",
+          "aa_model_id": "muse-spark-1-2",
+          "intelligence": 39.8
+        },
+        {
+          "model": "Qwen3.8 Max",
+          "aa_model_id": "qwen3-8-max",
+          "intelligence": 40.3
+        },
+        {
+          "model": "Qwen3.7 Max",
+          "aa_model_id": "qwen3-7-max",
+          "intelligence": 29.9
+        },
+        {
+          "model": "Qwen3.7 Plus",
+          "aa_model_id": "qwen3-7-plus",
+          "intelligence": 25.8
+        },
+        {
+          "model": "Qwen3.6 Plus",
+          "aa_model_id": "qwen3-6-plus",
+          "intelligence": 27.0
+        },
+        {
+          "model": "DeepSeek V4 Pro",
+          "aa_model_id": "deepseek-v4-pro",
+          "intelligence": 36.3
+        },
+        {
+          "model": "DeepSeek V4 Flash",
+          "aa_model_id": "deepseek-v4-flash",
+          "intelligence": 34.5
+        },
+        {
+          "model": "Hy3",
+          "aa_model_id": "hy3",
+          "intelligence": 25.8
+        },
+        {
+          "model": "DeepSeek V4 Flash Vision Exp",
+          "aa_model_id": "deepseek-v4-flash-vision",
+          "intelligence": 35.0
+        },
+        {
+          "model": "Ox Alpha Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "LongCat-2.0",
+          "aa_model_id": "longcat-2-0",
+          "intelligence": 19.7
+        },
+        {
+          "model": "Grok 4.6",
+          "aa_model_id": "grok-4-6",
+          "intelligence": 44.4
+        },
+        {
+          "model": "GLM-5.3-Flash",
+          "aa_model_id": "glm-5-3-flash",
+          "intelligence": 41.9
+        },
+        {
+          "model": "Qwen3.8 Flash",
+          "aa_model_id": "qwen3-8-flash-next",
+          "intelligence": 39.9
+        },
+        {
+          "model": "Hy4 preview",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Muse Spark 1.3 Contributor",
+          "aa_model_id": "muse-spark-1-3",
+          "intelligence": 48.2
+        },
+        {
+          "model": "Omen Alpha",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Gemini 3.8 Flash",
+          "aa_model_id": "gemini-3-8-flash",
+          "intelligence": 41.2
+        },
+        {
+          "model": "Gemini 3.7 Flash",
+          "aa_model_id": "gemini-3-7-flash",
+          "intelligence": 39.4
+        },
+        {
+          "model": "DeepSeek V4.1 Flash",
+          "aa_model_id": "deepseek-v4-1-flash",
+          "intelligence": 39.5
         }
       ]
     }
