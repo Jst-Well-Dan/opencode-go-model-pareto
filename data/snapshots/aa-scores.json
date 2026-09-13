@@ -2,7 +2,7 @@
   "metric": "AA Intelligence Index",
   "source": "https://aihot.virxact.com/leaderboard/methodology",
   "source_url": "https://artificialanalysis.ai/api/v2/data/llms/models",
-  "last_fetched_at": "2026-09-12T05:29:12.699024+00:00",
+  "last_fetched_at": "2026-09-13T05:45:45.508351+00:00",
   "snapshots": {
     "2026-08-17": {
       "label": "",
@@ -2404,7 +2404,7 @@
         }
       ]
     },
-    "2026-09-12": {
+    "2026-09-13": {
       "label": "今日",
       "models": [
         {
