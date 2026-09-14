@@ -62,6 +62,8 @@ python scripts/fetch_data.py --output-dir test   # 输出到 test/，不覆盖�
 python scripts/fetch_data.py --no-generate       # 仅更新 JSON 数据，不渲染 HTML
 python scripts/generate_card.py --keep-html      # 保留中间生成的 HTML 供调试
 python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PNG
+python scripts/generate.py --domain pinned --output compare-pinned.html      # 固定基准对照版
+python scripts/generate.py --domain adaptive --output compare-adaptive.html  # 每日自适应对照版
 ```
 
 ### 2. 手动维护与新增模型
@@ -86,6 +88,8 @@ python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PN
 - **缺分模型**：有配额但暂无 AA 评测分的模型以虚线头像标在其相对成本位置，并在缺失信息面板中以等宽卡片展示。
 - **历史快照缺失对齐**：以最新快照为基准，结合历史快照并集（`generate_html.py` 自动追加历史独有模型）决定模型全集；当切换到新模型尚未上线的历史日期时，缺失模型自动以 `null`/`absent` 对齐过滤，不会在历史图表中误渲染。已下线模型（如 `Ox Alpha Free` / `Grok 4.5`）仅从最新快照移除，历史快照仍保留，AA 侧保留最后已知分数不报错。
 - **去重快照**：`fetch_data.py:update_documents()` 在 `quota` 与 `AA` 均与最新快照完全一致（含 `AA_SLUG_ALIAS` 回填）时跳过新建当日快照，避免 `2026-08-23/24` 这类重复提交；新增模型或分数变动则仍正常落盘。
+- **促销行解析**：配额表出现 `<del>旧值</del> 新值`（如 `4x` 活动改价）时丢弃删除线旧值、取现行值；模型格的 `<small>` 活动说明（如 `4x · 9 月 20 日结束`）记入行 `note` 字段（模型名保持归一不断历史），悬浮提示中以「备注」展示。
+- **横轴方案对照**：`generate.py --domain` 支持 `legacy`（默认，最新日最大配额为 ref、左端固定 1）、`pinned`（`normalization_reference` 为永久锚＋全日期统一定义域，新极端不搬动老点）、`adaptive`（逐日独立 ref 与定义域，主聚类永远铺满但拨时间轴时坐标会跳）。
 - **新模型模态**：`MODEL_META` 缺失时不再兜底为 `unknown/纯文字`，而是默认抓取官网 `https://artificialanalysis.ai/models/<slug>` 的 `Input modality`（`Supports: text and image` → 多模态）自动判定，`brand` 按前缀推断；失败才抛错提示手填。
 
 ### 3. 时间轴与交互

@@ -87,39 +87,74 @@ def _get_api_key() -> str:
 
 
 class TableParser(HTMLParser):
-    """Collect rows from every HTML table."""
+    """Collect rows from every HTML table.
+
+    - `<del>` 包裹的是被划掉的旧值（如促销改价 `<del>6,500</del> 26,000`），直接丢弃；
+    - `<small>` 包裹的是单元格备注（如模型行的活动说明），记入与 tables
+      平行的 cell_notes，不混入主文本。
+    """
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.tables: list[list[list[str]]] = []
+        self.cell_notes: list[list[list[str]]] = []
         self._table: list[list[str]] | None = None
+        self._notes_table: list[list[str]] | None = None
         self._row: list[str] | None = None
+        self._notes_row: list[str] | None = None
         self._cell: list[str] | None = None
+        self._cell_note: list[str] | None = None
+        self._del_depth = 0
+        self._small_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "table":
             self._table = []
+            self._notes_table = []
         elif tag == "tr" and self._table is not None:
             self._row = []
+            self._notes_row = []
         elif tag in {"th", "td"} and self._row is not None:
             self._cell = []
+            self._cell_note = []
+        elif tag == "del":
+            self._del_depth += 1
+        elif tag == "small":
+            self._small_depth += 1
 
     def handle_data(self, data: str) -> None:
-        if self._cell is not None:
+        if self._cell is None or self._del_depth:
+            return
+        if self._small_depth and self._cell_note is not None:
+            self._cell_note.append(data)
+        else:
             self._cell.append(data)
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"th", "td"} and self._cell is not None and self._row is not None:
             value = " ".join("".join(self._cell).split())
+            note = " ".join("".join(self._cell_note or []).split())
             self._row.append(value)
+            if self._notes_row is not None:
+                self._notes_row.append(note)
             self._cell = None
+            self._cell_note = None
         elif tag == "tr" and self._row is not None and self._table is not None:
             if self._row:
                 self._table.append(self._row)
+                if self._notes_table is not None:
+                    self._notes_table.append(self._notes_row or [])
             self._row = None
+            self._notes_row = None
         elif tag == "table" and self._table is not None:
             self.tables.append(self._table)
+            self.cell_notes.append(self._notes_table or [])
             self._table = None
+            self._notes_table = None
+        elif tag == "del":
+            self._del_depth = max(0, self._del_depth - 1)
+        elif tag == "small":
+            self._small_depth = max(0, self._small_depth - 1)
 
 
 def fetch(url: str, retries: int = 5, timeout: int = 45, headers: dict[str, str] | None = None) -> str:
@@ -213,15 +248,19 @@ def parse_opencode_quotas(source: str) -> list[dict[str, Any]]:
     parser = TableParser()
     parser.feed(source)
     expected_headers = ["Model", "每 5 小时请求数", "每周请求数", "每月请求数"]
-    for table in parser.tables:
+    for idx, table in enumerate(parser.tables):
         if not table or table[0] != expected_headers:
             continue
+        notes = parser.cell_notes[idx] if idx < len(parser.cell_notes) else []
         rows = []
-        for cells in table[1:]:
+        for i, cells in enumerate(table[1:]):
             if len(cells) != 4:
                 continue
+            note_cells = notes[i + 1] if i + 1 < len(notes) else []
+            note = (note_cells[0] if note_cells else "") or None
             rows.append({
                 "model": cells[0],
+                "note": note,
                 "requests_per_5h": parse_quota_value(cells[1]),
                 "requests_per_week": parse_quota_value(cells[2]),
                 "requests_per_month": parse_quota_value(cells[3]),
@@ -261,7 +300,8 @@ def scrape_aa_modality(slug: str) -> str:
     cache = _load_modality_cache()
     if slug in cache and cache[slug] in ("多模态", "纯文字"):
         return cache[slug]
-    url = f"https://artificialanalysis.ai/models/{slug}"
+    from urllib.parse import quote
+    url = f"https://artificialanalysis.ai/models/{quote(slug, safe='')}"
     try:
         html = fetch(url, retries=3, timeout=30)
     except Exception as e:
@@ -487,6 +527,7 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
         if row is None:
             snapshot_models.append({
                 "model": model,
+                "note": None,
                 "requests_per_5h": None,
                 "requests_per_week": None,
                 "requests_per_month": None,
@@ -494,6 +535,7 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
         else:
             snapshot_models.append({
                 "model": model,
+                "note": row.get("note"),
                 "requests_per_5h": row["requests_per_5h"],
                 "requests_per_week": row["requests_per_week"],
                 "requests_per_month": row["requests_per_month"],

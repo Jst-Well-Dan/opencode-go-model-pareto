@@ -2,7 +2,7 @@
   "metric": "AA Intelligence Index",
   "source": "https://aihot.virxact.com/leaderboard/methodology",
   "source_url": "https://artificialanalysis.ai/api/v2/data/llms/models",
-  "last_fetched_at": "2026-09-14T05:56:30.244838+00:00",
+  "last_fetched_at": "2026-09-14T07:10:56.924859+00:00",
   "snapshots": {
     "2026-08-17": {
       "label": "",
@@ -2731,11 +2731,6 @@
           "model": "DeepSeek V4.1 Flash",
           "aa_model_id": "deepseek-v4-1-flash",
           "intelligence": 39.5
-        },
-        {
-          "model": "DeepSeek V4.1 Flash4x · 9 月 20 日结束",
-          "aa_model_id": null,
-          "intelligence": null
         }
       ]
     }
