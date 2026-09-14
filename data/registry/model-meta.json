@@ -31,6 +31,10 @@
     "brand": "deepseek",
     "modality": "多模态"
   },
+  "DeepSeek V4.1 Flash4x · 9 月 20 日结束": {
+    "brand": "deepseek",
+    "modality": "未知"
+  },
   "GLM-5.1": {
     "brand": "zhipu",
     "modality": "纯文字"
