@@ -235,12 +235,14 @@ def fetch_aa_via_api() -> dict[str, float]:
 
 
 def parse_quota_value(value: str) -> int | None:
-    """Parse a quota cell. '-' means unlimited / not applicable (e.g. free tier)."""
+    """Parse a quota cell. '-' / '无限制' means unlimited / not applicable."""
     cleaned = value.replace(",", "").replace("，", "").replace("\u00a0", "").strip()
-    if cleaned == "-":
+    if cleaned in ("-", "–", "—", "无限制", "无限", "不限", "∞"):
+        return None
+    if cleaned.lower() in ("unlimited", "infinite", "n/a", "na"):
         return None
     if not cleaned.isdigit():
-        raise ValueError(f"expected a non-negative integer or '-', got {value!r}")
+        raise ValueError(f"expected a non-negative integer, '-' or '无限制', got {value!r}")
     return int(cleaned)
 
 
