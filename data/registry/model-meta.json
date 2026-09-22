@@ -83,6 +83,10 @@
     "brand": "grok",
     "modality": "多模态"
   },
+  "Grok 4.7": {
+    "brand": "grok",
+    "modality": "多模态"
+  },
   "Hy3": {
     "brand": "hunyuan",
     "modality": "纯文字"
@@ -134,6 +138,14 @@
   "MiMo-V2.5-Pro": {
     "brand": "xiaomimimo",
     "modality": "纯文字"
+  },
+  "MiMo-V2.6-Flash": {
+    "brand": "xiaomimimo",
+    "modality": "未知"
+  },
+  "MiMo-V2.6-Pro": {
+    "brand": "xiaomimimo",
+    "modality": "多模态"
   },
   "MiniMax M2.7": {
     "brand": "minimax",
