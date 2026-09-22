@@ -44,6 +44,26 @@
 @media(max-width:900px){.site-header--centered .header-actions{position:static;margin-top:14px}}
 .github-link.src{color:#0f766e;border-color:#a7f3d0}.github-link.src:hover{background:#f0fdfa;border-color:#5eead4;color:#0b5f59}
 .foot a.src-link{color:#0f766e;font-weight:650;text-decoration:none;border-bottom:1px dashed #5eead4}.foot a.src-link:hover{background:#f0fdfa;border-bottom-style:solid}
+.filter-panel{border:1px solid #e2e8f0;border-radius:12px;background:#fbfcfe;margin:12px 22px 0}
+.filter-panel[open]{box-shadow:0 4px 14px rgba(30,41,59,.06)}
+.filter-summary{cursor:pointer;list-style:none;display:flex;gap:10px;align-items:center;padding:12px 16px;font-size:.9rem}
+.filter-summary::-webkit-details-marker{display:none}
+.filter-summary .sum-count{margin-left:auto;color:var(--muted);font-size:.82rem;font-variant-numeric:tabular-nums}
+.filter-summary .sum-chev{color:var(--teal);font-weight:800;transition:transform .15s}
+.filter-panel[open] .sum-chev{transform:rotate(180deg)}
+.filter-inner{padding:12px 16px 14px;border-top:1px solid #eef2f7}
+.filter-inner .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.filter-inner .toolbar .count{font-size:.82rem;color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums}
+.filter-inner .search{font:inherit;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}
+.filter-inner .groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.filter-inner .groups details{border:1px solid #e2e8f0;border-radius:10px;background:#fff;padding:8px 10px}
+.filter-inner .groups summary{cursor:pointer;font-weight:700;font-size:.86rem}
+.filter-inner .groups label{display:flex;gap:8px;align-items:center;padding:4px 2px;font-size:.85rem;cursor:pointer;border-radius:6px}
+.filter-inner .groups label:hover{background:#f1f5f9}
+.filter-inner input[type=checkbox]{accent-color:var(--teal);width:16px;height:16px}
+.filter-inner .brand-bulk{display:flex;gap:6px;margin:6px 0 4px}
+.filter-inner .brand-bulk button{font-size:.75rem;padding:2px 8px}
+.filter-summary:focus-visible,.filter-inner .groups summary:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
 
 </style>
 </head>
@@ -63,6 +83,7 @@
 <div class="chart-head"><div><div class="eyebrow">Pareto optimal · OpenCode Go</div><div class="chart-title" id="chart-title-oc">模型效能分布</div></div><div class="controls"><div class="control-group"><label for="dateSelect-oc">数据日期</label><select id="dateSelect-oc"><option value="2026-09-22" selected>2026-09-22 · 今日</option><option value="2026-09-21">2026-09-21</option><option value="2026-09-20">2026-09-20</option><option value="2026-09-19">2026-09-19</option><option value="2026-09-18">2026-09-18</option><option value="2026-09-16">2026-09-16</option><option value="2026-09-15">2026-09-15</option><option value="2026-09-14">2026-09-14</option><option value="2026-09-13">2026-09-13</option><option value="2026-09-11">2026-09-11</option><option value="2026-09-10">2026-09-10</option><option value="2026-09-09">2026-09-09</option><option value="2026-09-08">2026-09-08</option><option value="2026-09-07">2026-09-07</option><option value="2026-09-05">2026-09-05</option><option value="2026-09-04">2026-09-04</option><option value="2026-09-03">2026-09-03</option><option value="2026-09-01">2026-09-01</option><option value="2026-08-28">2026-08-28</option><option value="2026-08-25">2026-08-25</option><option value="2026-08-24">2026-08-24</option><option value="2026-08-20-hy3x8-preview">2026-08-20-hy3x8-preview · Hy3×8 预览</option><option value="2026-08-20">2026-08-20</option><option value="2026-08-18">2026-08-18</option><option value="2026-08-17">2026-08-17</option></select></div><div class="control-group"><span>横轴刻度</span><button id="logBtn-oc" class="active" type="button" aria-pressed="true">对数</button><button id="linearBtn-oc" type="button" aria-pressed="false">线性</button></div></div></div>
 <div class="timeline" id="timeline-oc"><button id="prevBtn-oc" class="pill" type="button">◀</button><input type="range" id="dateRange-oc"><button id="nextBtn-oc" class="pill" type="button">▶</button><span class="date-chip" id="dateChip-oc"></span></div>
 <div class="legend"><span class="legend-key"><i class="ring-key"></i>橙色外环：帕累托最优</span><span class="legend-key"><i class="line-key"></i>帕累托最优连线</span><span class="legend-key"><i class="badge-key multi">M</i>多模态</span><span class="legend-key"><i class="badge-key text">T</i>纯文字</span><span class="legend-key"><i class="badge-key unknown">?</i>模态未知（AA 未收录）</span><span class="legend-key"><i class="ref-key"></i>虚线头像：无 AA 分</span></div>
+<details class="filter-panel" id="filterPanel-oc"><summary class="filter-summary" id="filterSummary-oc"><span><b>模型筛选</b> · 按公司分组</span><span class="sum-count" id="filterCount-oc"></span><span class="sum-chev">▾</span></summary><div class="filter-inner"><div class="toolbar"><button id="filterAll-oc" type="button">全选</button><button id="filterReset-oc" type="button">重置</button><input class="search" id="filterSearch-oc" placeholder="搜索模型，如 muse…"><span class="count" id="filterCountInner-oc"></span></div><div class="groups" id="filterGroups-oc"></div></div></details>
 <div class="chart-wrap" id="chartWrap-oc"><svg class="chart" id="chart-oc" viewBox="0 0 1080 560" role="img"><title>AA 智力指数与相对配额成本散点图</title></svg><div class="tooltip" id="tooltip-oc" role="status" aria-live="polite"></div></div>
 </section>
 <div class="below">
@@ -94,19 +115,63 @@ function createParetoChart(prefix, baseData, quotaSnapshots, scoreSnapshots, yRa
   const datasets=Object.fromEntries(Object.keys(quotaSnapshots).map(d=>[d,buildData(d)]));
   const allDates=Object.keys(quotaSnapshots).sort(); let data=[],plotted=[],frontier=[],activeDate=allDates[allDates.length-1];
   function syncTimeline(date){const idx=allDates.indexOf(date);if(dsRange){dsRange.min=0;dsRange.max=Math.max(0,allDates.length-1);dsRange.value=idx}if(chip)chip.textContent=date+(date===allDates[allDates.length-1]?" · 今日":"");if(dsSelect)dsSelect.value=date;if(prevBtn)prevBtn.disabled=idx<=0;if(nextBtn)nextBtn.disabled=idx>=allDates.length-1;}
-  function setParetoFlags(){plotted=data.filter(d=>d.intelligence!==null&&d.cost!==null);plotted.forEach(d=>{d.pareto=!plotted.some(o=>o!==d&&o.intelligence>=d.intelligence&&o.cost<=d.cost&&(o.intelligence>d.intelligence||o.cost<d.cost))});frontier=plotted.filter(d=>d.pareto).sort((a,b)=>a.cost-b.cost);}
+  function setParetoFlags(){plotted=data.filter(d=>d.intelligence!==null&&d.cost!==null&&!excluded.has(d.model));plotted.forEach(d=>{d.pareto=!plotted.some(o=>o!==d&&o.intelligence>=d.intelligence&&o.cost<=d.cost&&(o.intelligence>d.intelligence||o.cost<d.cost))});frontier=plotted.filter(d=>d.pareto).sort((a,b)=>a.cost-b.cost);}
   function showTip(d){const s=svg.getBoundingClientRect().width/W;tip.innerHTML=`<strong>${d.model}</strong><span style="display:block;color:#cbd5e1;font-size:.72rem">${activeDate}</span>${d.pareto?'<span style="color:#fdba74;font-weight:700">帕累托最优</span><br>':''}模态：${d.modality}${d.note?`<br>备注：${d.note}`:""}<br>智力指数：${d.intelligence.toFixed(1)}<br>相对成本：${d.cost.toFixed(3)}<br>配额：${d.requests.toLocaleString()} / 5 小时<br>每周：${d.weekly.toLocaleString()}<br>每月：${d.monthly.toLocaleString()}`;tip.style.left=`${x(d.cost)*s+10}px`;tip.style.top=`${y(d.intelligence)*s+10}px`;tip.classList.add("on");}
   function hideTip(){tip.classList.remove("on");}
-  function render(){svg.replaceChildren();svg.append(node("title",{}, "AA 智力指数与相对配额成本"), node("desc",{}, `${plotted.length} 模型，${frontier.length} 帕累托最优`));const defs=node("defs"),mk=node("marker",{id:"arrow-"+prefix,viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:6,markerHeight:6,orient:"auto-start-reverse"});mk.append(node("path",{d:"M 0 0 L 10 5 L 0 10 z",fill:"#0f766e"}));defs.append(mk);svg.append(defs);activeYTicks.forEach(v=>svg.append(node("line",{x1:M.l,y1:y(v),x2:W-M.r,y2:y(v),class:"grid"}),node("text",{x:M.l-12,y:y(v)+4,"text-anchor":"end",class:"tick"},String(v))));const ticks=activeXTicks[scaleMode];ticks.forEach(v=>svg.append(node("line",{x1:x(v),y1:M.t,x2:x(v),y2:H-M.b,class:"grid"}),node("text",{x:x(v),y:H-M.b+24,"text-anchor":"middle",class:"tick"},String(v))));svg.append(node("line",{x1:M.l,y1:H-M.b,x2:W-M.r,y2:H-M.b,class:"axis"}),node("line",{x1:M.l,y1:M.t,x2:M.l,y2:H-M.b,class:"axis"}),node("text",{x:(M.l+W-M.r)/2,y:H-22,"text-anchor":"middle",class:"axis-label"},scaleMode==="log"?"相对配额成本（越低越好 · 对数刻度）":"相对配额成本（越低越好 · 线性刻度）"),node("text",{x:20,y:(M.t+H-M.b)/2,transform:`rotate(-90 20 ${(M.t+H-M.b)/2})`,"text-anchor":"middle",class:"axis-label"},"AA Intelligence Index"),node("line",{x1:178,y1:104,x2:111,y2:60,class:"ideal-line"}),node("text",{x:185,y:108,class:"ideal"},"理想方向：左上 ↖"),node("polyline",{points:frontier.map(d=>`${x(d.cost)},${y(d.intelligence)}`).join(" "),class:"optimal-line"}));plotted.filter(d=>!d.pareto).concat(frontier).forEach(d=>{const meta=modalityMeta[d.modality],g=node("g",{class:`point${d.pareto?" optimal":""}`,transform:`translate(${x(d.cost)} ${y(d.intelligence)})`,tabindex:"0"});g.append(node("circle",{r:18,class:"avatar-bg"}),node("image",{href:icons[d.brand],x:-12,y:-12,width:24,height:24,preserveAspectRatio:"xMidYMid meet"}),node("circle",{cx:13,cy:13,r:8,class:`point-badge ${meta.cls}`}),node("text",{x:13,y:13,class:"point-badge-text"},meta.mark));g.addEventListener("pointerenter",()=>showTip(d));g.addEventListener("pointerleave",hideTip);svg.append(g);});data.filter(d=>d.intelligence===null&&!d.absent).forEach(d=>{const onFree=d.cost===null,px=onFree?M.l:x(d.cost),g=node("g",{class:"axis-ref",transform:`translate(${px} ${H-M.b})`,tabindex:"0"});g.append(node("circle",{r:14,class:"ref-avatar-bg"}),node("image",{href:icons[d.brand],x:-9,y:-9,width:18,height:18,opacity:.6,preserveAspectRatio:"xMidYMid meet"}),node("text",{y:-21,"text-anchor":"middle",class:"ref-label"},onFree?"免费 · 不限":`${d.model} （无 AA 分）`));svg.append(g);});}
+  function render(){svg.replaceChildren();svg.append(node("title",{}, "AA 智力指数与相对配额成本"), node("desc",{}, `${plotted.length} 模型，${frontier.length} 帕累托最优`));const defs=node("defs"),mk=node("marker",{id:"arrow-"+prefix,viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:6,markerHeight:6,orient:"auto-start-reverse"});mk.append(node("path",{d:"M 0 0 L 10 5 L 0 10 z",fill:"#0f766e"}));defs.append(mk);svg.append(defs);activeYTicks.forEach(v=>svg.append(node("line",{x1:M.l,y1:y(v),x2:W-M.r,y2:y(v),class:"grid"}),node("text",{x:M.l-12,y:y(v)+4,"text-anchor":"end",class:"tick"},String(v))));const ticks=activeXTicks[scaleMode];ticks.forEach(v=>svg.append(node("line",{x1:x(v),y1:M.t,x2:x(v),y2:H-M.b,class:"grid"}),node("text",{x:x(v),y:H-M.b+24,"text-anchor":"middle",class:"tick"},String(v))));svg.append(node("line",{x1:M.l,y1:H-M.b,x2:W-M.r,y2:H-M.b,class:"axis"}),node("line",{x1:M.l,y1:M.t,x2:M.l,y2:H-M.b,class:"axis"}),node("text",{x:(M.l+W-M.r)/2,y:H-22,"text-anchor":"middle",class:"axis-label"},scaleMode==="log"?"相对配额成本（越低越好 · 对数刻度）":"相对配额成本（越低越好 · 线性刻度）"),node("text",{x:20,y:(M.t+H-M.b)/2,transform:`rotate(-90 20 ${(M.t+H-M.b)/2})`,"text-anchor":"middle",class:"axis-label"},"AA Intelligence Index"),node("line",{x1:178,y1:104,x2:111,y2:60,class:"ideal-line"}),node("text",{x:185,y:108,class:"ideal"},"理想方向：左上 ↖"),node("polyline",{points:frontier.map(d=>`${x(d.cost)},${y(d.intelligence)}`).join(" "),class:"optimal-line"}));plotted.filter(d=>!d.pareto).concat(frontier).forEach(d=>{const meta=modalityMeta[d.modality],g=node("g",{class:`point${d.pareto?" optimal":""}`,transform:`translate(${x(d.cost)} ${y(d.intelligence)})`,tabindex:"0"});g.append(node("circle",{r:18,class:"avatar-bg"}),node("image",{href:icons[d.brand],x:-12,y:-12,width:24,height:24,preserveAspectRatio:"xMidYMid meet"}),node("circle",{cx:13,cy:13,r:8,class:`point-badge ${meta.cls}`}),node("text",{x:13,y:13,class:"point-badge-text"},meta.mark));g.addEventListener("pointerenter",()=>showTip(d));g.addEventListener("pointerleave",hideTip);svg.append(g);});data.filter(d=>excluded.has(d.model)&&d.intelligence!==null&&d.cost!==null).forEach(d=>{svg.append(node("circle",{cx:x(d.cost),cy:y(d.intelligence),r:5,fill:"none",stroke:"#cbd5e1","stroke-width":1.5,"stroke-dasharray":"3 2"}));});data.filter(d=>d.intelligence===null&&!d.absent).forEach(d=>{const onFree=d.cost===null,px=onFree?M.l:x(d.cost),g=node("g",{class:"axis-ref",transform:`translate(${px} ${H-M.b})`,tabindex:"0"});g.append(node("circle",{r:14,class:"ref-avatar-bg"}),node("image",{href:icons[d.brand],x:-9,y:-9,width:18,height:18,opacity:.6,preserveAspectRatio:"xMidYMid meet"}),node("text",{y:-21,"text-anchor":"middle",class:"ref-label"},onFree?"免费 · 不限":`${d.model} （无 AA 分）`));svg.append(g);});}
   function setScale(m){scaleMode=m;[logBtn,linearBtn].forEach(b=>{if(!b)return;b.classList.toggle("active",b.id.includes(m));b.setAttribute("aria-pressed",String(b.id.includes(m)))});hideTip();render();}
   if(logBtn)logBtn.addEventListener("click",()=>setScale("log"));if(linearBtn)linearBtn.addEventListener("click",()=>setScale("linear"));
   function avatarMarkup(d,cls="card-avatar"){const m=modalityMeta[d.modality];return `<span class="avatar-wrap"><img class="${cls}" src="${icons[d.brand]}" alt=""><i class="modality-badge ${m.cls}">${m.mark}</i></span>`;}
-  function renderSummary(){if(!cardsEl)return;cardsEl.innerHTML=frontier.map((d,i)=>`<div class="card"><div>${avatarMarkup(d)}</div><div><strong>${i+1}. ${d.model}</strong><span>${d.modality} · 成本 ${d.cost.toFixed(3)} · 智力 ${d.intelligence.toFixed(1)}</span></div></div>`).join("");const miss=data.filter(d=>d.intelligence===null&&!d.absent);if(miss.length){missingPanel.style.display="";missingRow.innerHTML=miss.map(d=>`<div class="missing-item">${avatarMarkup(d,"missing-avatar")}<span><span class="model">${d.model}</span><br>${d.modality} · ${d.requests?d.requests.toLocaleString()+" / 5 小时":"免费 · 不限"}</span></div>`).join("");if(missingDateEl)missingDateEl.textContent=activeDate;}else missingPanel.style.display="none"; if(footRef){if(xConfig.basis==="adaptive"){const top=data.filter(d=>d.requests).sort((a,b)=>b.requests-a.requests)[0];footRef.textContent=top?`${top.model} ${top.requests.toLocaleString()} / 5 小时`:"—";}else{footRef.textContent=`${normalizationReference.model} ${normalizationReference.requests_per_5h.toLocaleString()} / 5 小时`;}}}
+  function renderSummary(){if(!cardsEl)return;updateFilterSummary();cardsEl.innerHTML=frontier.map((d,i)=>`<div class="card"><div>${avatarMarkup(d)}</div><div><strong>${i+1}. ${d.model}</strong><span>${d.modality} · 成本 ${d.cost.toFixed(3)} · 智力 ${d.intelligence.toFixed(1)}</span></div></div>`).join("");const miss=data.filter(d=>d.intelligence===null&&!d.absent&&!excluded.has(d.model));if(miss.length){missingPanel.style.display="";missingRow.innerHTML=miss.map(d=>`<div class="missing-item">${avatarMarkup(d,"missing-avatar")}<span><span class="model">${d.model}</span><br>${d.modality} · ${d.requests?d.requests.toLocaleString()+" / 5 小时":"免费 · 不限"}</span></div>`).join("");if(missingDateEl)missingDateEl.textContent=activeDate;}else missingPanel.style.display="none"; if(footRef){if(xConfig.basis==="adaptive"){const top=data.filter(d=>d.requests).sort((a,b)=>b.requests-a.requests)[0];footRef.textContent=top?`${top.model} ${top.requests.toLocaleString()} / 5 小时`:"—";}else{footRef.textContent=`${normalizationReference.model} ${normalizationReference.requests_per_5h.toLocaleString()} / 5 小时`;}}}
   function setDataset(date){activeDate=date;activeYMin=yRanges[date][0];activeYMax=yRanges[date][1];activeYTicks=yTicksSnapshots[date];activeXMin=xConfig.domains[date][0];activeXMax=xConfig.domains[date][1];activeXTicks=xConfig.ticks[date];data=datasets[date].map(d=>({...d}));setParetoFlags();syncTimeline(date);renderSummary();hideTip();render();}
   if(dsSelect)dsSelect.addEventListener("change",e=>setDataset(e.target.value));
   if(dsRange)dsRange.addEventListener("input",e=>setDataset(allDates[Number(e.target.value)]));
   if(prevBtn)prevBtn.addEventListener("click",()=>{const i=allDates.indexOf(activeDate);if(i>0)setDataset(allDates[i-1])});
   if(nextBtn)nextBtn.addEventListener("click",()=>{const i=allDates.indexOf(activeDate);if(i<allDates.length-1)setDataset(allDates[i+1])});
+  const BRAND_LABELS={"openai":"OpenAI","zhipu":"智谱","kimi":"Kimi","xiaomimimo":"小米 MiMo","minimax":"MiniMax","muse":"Muse","qwen":"Qwen","deepseek":"DeepSeek","hunyuan":"混元","longcat":"LongCat","grok":"Grok","gemini":"Gemini","inkling":"Inkling","nemotron":"Nemotron","step":"Step","ox":"Ox","unknown":"未知"};
+  const excluded=new Set();let filterKeyword="";const filterBoxes=[],filterGroupSums=[];let filterGroupsEl=null;
+  function brandLabel(b){return BRAND_LABELS[b]||b;}
+  function updateFilterSummary(){const n=baseData.length-excluded.size;const c=document.getElementById("filterCount-"+prefix),c2=document.getElementById("filterCountInner-"+prefix);if(c)c.textContent='已选 '+n+'/'+baseData.length+(excluded.size?' · 已剔除 '+excluded.size+' 个':'');if(c2)c2.textContent='已选 '+n+'/'+baseData.length+' · 前沿 '+frontier.length+' 个';}
+  function applyFilter(){filterBoxes.forEach(o=>{o.cb.checked=!excluded.has(o.m);});filterGroupSums.forEach(g=>{g.el.textContent=brandLabel(g.brand)+'（'+g.items.filter(m=>!excluded.has(m)).length+'/'+g.items.length+'）';});setParetoFlags();renderSummary();hideTip();render();}
+  function buildFilterPanel(){
+    filterGroupsEl=document.getElementById("filterGroups-"+prefix);
+    if(!filterGroupsEl)return;
+    const byBrand={};
+    baseData.forEach(d=>{(byBrand[d.brand]=byBrand[d.brand]||[]).push(d.model);});
+    Object.keys(byBrand).sort((a,b)=>brandLabel(a).localeCompare(brandLabel(b),"zh")).forEach(b=>{
+      const items=byBrand[b];
+      const det=document.createElement("details");det.dataset.brand=b;
+      const s=document.createElement("summary");det.append(s);
+      filterGroupSums.push({el:s,brand:b,items});
+      const row=document.createElement("div");row.className="brand-bulk";
+      const on=document.createElement("button");on.type="button";on.textContent="全选"+brandLabel(b);
+      const off=document.createElement("button");off.type="button";off.textContent="清空"+brandLabel(b);
+      on.addEventListener("click",()=>{items.forEach(m=>excluded.delete(m));applyFilter();});
+      off.addEventListener("click",()=>{items.forEach(m=>excluded.add(m));applyFilter();});
+      row.append(on,off);det.append(row);
+      items.forEach(m=>{
+        const lab=document.createElement("label");lab.dataset.model=m.toLowerCase();
+        const cb=document.createElement("input");cb.type="checkbox";cb.checked=true;cb.setAttribute("aria-label",m);
+        cb.addEventListener("change",()=>{cb.checked?excluded.delete(m):excluded.add(m);applyFilter();});
+        lab.append(cb,document.createTextNode(m));det.append(lab);
+        filterBoxes.push({cb,m});
+      });
+      filterGroupsEl.append(det);
+    });
+    const all=document.getElementById("filterAll-"+prefix),rs=document.getElementById("filterReset-"+prefix),si=document.getElementById("filterSearch-"+prefix);
+    if(all)all.addEventListener("click",()=>{excluded.clear();applyFilter();});
+    if(rs)rs.addEventListener("click",()=>{excluded.clear();applyFilter();});
+    if(si)si.addEventListener("input",()=>{
+      filterKeyword=si.value.trim().toLowerCase();
+      filterGroupsEl.querySelectorAll("details").forEach(det=>{
+        let vis=0;
+        det.querySelectorAll("label").forEach(lab=>{const show=!filterKeyword||lab.dataset.model.includes(filterKeyword);lab.style.display=show?"":"none";if(show)vis++;});
+        det.style.display=vis?"":"none";
+      });
+    });
+    applyFilter();
+  }
+  buildFilterPanel();
   setDataset(activeDate);
 }
 
