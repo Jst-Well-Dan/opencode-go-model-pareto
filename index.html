@@ -169,7 +169,8 @@ function createParetoChart(prefix, baseData, quotaSnapshots, scoreSnapshots, yRa
         det.style.display=vis?"":"none";
       });
     });
-    applyFilter();
+    filterGroupSums.forEach(g=>{g.el.textContent=brandLabel(g.brand)+'（'+g.items.length+'/'+g.items.length+'）';});
+    updateFilterSummary();
   }
   buildFilterPanel();
   setDataset(activeDate);
