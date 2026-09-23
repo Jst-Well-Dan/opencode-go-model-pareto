@@ -59,6 +59,10 @@
     "brand": "openai",
     "modality": "多模态"
   },
+  "GPT 6 Luna": {
+    "brand": "openai",
+    "modality": "多模态"
+  },
   "GPT-5.6 Luna": {
     "brand": "openai",
     "modality": "多模态"
@@ -230,6 +234,10 @@
   "Qwen3.8 Max": {
     "brand": "qwen",
     "modality": "多模态"
+  },
+  "Space Bunny Free": {
+    "brand": "unknown",
+    "modality": "未知"
   },
   "Step 3.5 Flash": {
     "brand": "step",
