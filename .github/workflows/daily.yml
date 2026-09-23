@@ -2,7 +2,7 @@ name: Daily update
 
 on:
   schedule:
-    - cron: "0 16 * * *"  # 每天 00:00 CST (16:00 UTC前一天)
+    - cron: "30 16 * * *"  # 每天 00:30 CST (16:30 UTC前一天，错开整点延迟)
   workflow_dispatch:
 
 permissions:
@@ -47,7 +47,7 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             git add data/snapshots/quota-snapshots.json data/snapshots/aa-scores.json data/cache/aa-modality-cache.json data/registry/icons.json data/registry/model-meta.json index.html
             # 若 HTML 未变化（仅时间戳变）也一并提交，确保 Pages 触发部署
-            git commit -m "chore(data): daily snapshot $(date -u +%Y-%m-%d)"
+            git commit -m "chore(data): daily snapshot $(TZ=Asia/Shanghai date +%F)"
             git push
           else
             echo "No changes to commit."

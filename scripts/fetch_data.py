@@ -21,7 +21,7 @@ import re
 import sys
 import tempfile
 import time
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -659,7 +659,7 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--date", default=date.today().isoformat(), help="snapshot date, default: today")
+    parser.add_argument("--date", default=datetime.now(timezone(timedelta(hours=8))).date().isoformat(), help="snapshot date, default: today (Asia/Shanghai)")
     parser.add_argument("--no-generate", action="store_true", help="only update JSON files")
     parser.add_argument("--output-dir", type=Path, help="write updated JSON/HTML under this directory instead of the project root")
     args = parser.parse_args()
