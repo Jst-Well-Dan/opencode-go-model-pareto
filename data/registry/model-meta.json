@@ -123,6 +123,10 @@
     "brand": "kimi",
     "modality": "多模态"
   },
+  "LongCat 2.5 Preview Free": {
+    "brand": "longcat",
+    "modality": "未知"
+  },
   "LongCat-2.0": {
     "brand": "longcat",
     "modality": "纯文字"

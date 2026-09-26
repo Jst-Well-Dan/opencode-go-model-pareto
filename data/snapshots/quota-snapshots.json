@@ -4377,7 +4377,7 @@
       ]
     },
     "2026-09-26": {
-      "label": "今日",
+      "label": "",
       "models": [
         {
           "model": "GPT 5.6 Luna",
@@ -4604,8 +4604,244 @@
           "requests_per_month": 21130
         }
       ]
+    },
+    "2026-09-27": {
+      "label": "今日",
+      "models": [
+        {
+          "model": "GPT 5.6 Luna",
+          "note": null,
+          "requests_per_5h": 2050,
+          "requests_per_week": 5100,
+          "requests_per_month": 10250
+        },
+        {
+          "model": "GLM-5.3",
+          "note": null,
+          "requests_per_5h": 220,
+          "requests_per_week": 540,
+          "requests_per_month": 1080
+        },
+        {
+          "model": "GLM-5.2",
+          "note": null,
+          "requests_per_5h": 880,
+          "requests_per_week": 2150,
+          "requests_per_month": 4300
+        },
+        {
+          "model": "GLM-5.1",
+          "note": null,
+          "requests_per_5h": 880,
+          "requests_per_week": 2150,
+          "requests_per_month": 4300
+        },
+        {
+          "model": "Kimi K3",
+          "note": null,
+          "requests_per_5h": 110,
+          "requests_per_week": 250,
+          "requests_per_month": 490
+        },
+        {
+          "model": "Kimi K2.7 Code",
+          "note": null,
+          "requests_per_5h": 1350,
+          "requests_per_week": 3380,
+          "requests_per_month": 6750
+        },
+        {
+          "model": "Kimi K2.6",
+          "note": null,
+          "requests_per_5h": 1150,
+          "requests_per_week": 2880,
+          "requests_per_month": 5750
+        },
+        {
+          "model": "MiMo-V2.5",
+          "note": null,
+          "requests_per_5h": 30100,
+          "requests_per_week": 75200,
+          "requests_per_month": 150400
+        },
+        {
+          "model": "MiMo-V2.5-Pro",
+          "note": null,
+          "requests_per_5h": 3250,
+          "requests_per_week": 8150,
+          "requests_per_month": 16300
+        },
+        {
+          "model": "MiniMax M3",
+          "note": null,
+          "requests_per_5h": 3200,
+          "requests_per_week": 8000,
+          "requests_per_month": 16000
+        },
+        {
+          "model": "MiniMax M2.7",
+          "note": null,
+          "requests_per_5h": 3400,
+          "requests_per_week": 8500,
+          "requests_per_month": 17000
+        },
+        {
+          "model": "Muse Spark 1.2 Contributor",
+          "note": null,
+          "requests_per_5h": 45300,
+          "requests_per_week": 113300,
+          "requests_per_month": 226600
+        },
+        {
+          "model": "Qwen3.8 Max",
+          "note": null,
+          "requests_per_5h": 160,
+          "requests_per_week": 400,
+          "requests_per_month": 810
+        },
+        {
+          "model": "Qwen3.7 Max",
+          "note": null,
+          "requests_per_5h": 170,
+          "requests_per_week": 420,
+          "requests_per_month": 840
+        },
+        {
+          "model": "Qwen3.7 Plus",
+          "note": null,
+          "requests_per_5h": 4300,
+          "requests_per_week": 10800,
+          "requests_per_month": 21600
+        },
+        {
+          "model": "Qwen3.6 Plus",
+          "note": null,
+          "requests_per_5h": 3300,
+          "requests_per_week": 8200,
+          "requests_per_month": 16300
+        },
+        {
+          "model": "DeepSeek V4 Pro",
+          "note": null,
+          "requests_per_5h": 1050,
+          "requests_per_week": 2600,
+          "requests_per_month": 5200
+        },
+        {
+          "model": "DeepSeek V4 Flash",
+          "note": null,
+          "requests_per_5h": 13000,
+          "requests_per_week": 32500,
+          "requests_per_month": 65000
+        },
+        {
+          "model": "Hy3",
+          "note": null,
+          "requests_per_5h": 4300,
+          "requests_per_week": 10750,
+          "requests_per_month": 21500
+        },
+        {
+          "model": "DeepSeek V4 Flash Vision Exp",
+          "note": null,
+          "requests_per_5h": 6500,
+          "requests_per_week": 16250,
+          "requests_per_month": 32500
+        },
+        {
+          "model": "LongCat-2.0",
+          "note": null,
+          "requests_per_5h": 11400,
+          "requests_per_week": 28600,
+          "requests_per_month": 57200
+        },
+        {
+          "model": "Grok 4.6",
+          "note": null,
+          "requests_per_5h": 169,
+          "requests_per_week": 423,
+          "requests_per_month": 845
+        },
+        {
+          "model": "GLM-5.3-Flash",
+          "note": null,
+          "requests_per_5h": 6320,
+          "requests_per_week": 15790,
+          "requests_per_month": 31580
+        },
+        {
+          "model": "Qwen3.8 Flash",
+          "note": null,
+          "requests_per_5h": 5400,
+          "requests_per_week": 13500,
+          "requests_per_month": 27000
+        },
+        {
+          "model": "Hy4 preview",
+          "note": null,
+          "requests_per_5h": 1350,
+          "requests_per_week": 3380,
+          "requests_per_month": 6770
+        },
+        {
+          "model": "Muse Spark 1.3 Contributor",
+          "note": null,
+          "requests_per_5h": 45300,
+          "requests_per_week": 113300,
+          "requests_per_month": 226600
+        },
+        {
+          "model": "DeepSeek V4.1 Flash",
+          "note": null,
+          "requests_per_5h": 26000,
+          "requests_per_week": 65000,
+          "requests_per_month": 130000
+        },
+        {
+          "model": "MiMo-V2.6-Flash",
+          "note": null,
+          "requests_per_5h": 30100,
+          "requests_per_week": 75200,
+          "requests_per_month": 150400
+        },
+        {
+          "model": "MiMo-V2.6-Pro",
+          "note": null,
+          "requests_per_5h": 3250,
+          "requests_per_week": 8150,
+          "requests_per_month": 16300
+        },
+        {
+          "model": "Grok 4.7",
+          "note": null,
+          "requests_per_5h": 169,
+          "requests_per_week": 423,
+          "requests_per_month": 845
+        },
+        {
+          "model": "Space Bunny Free",
+          "note": null,
+          "requests_per_5h": null,
+          "requests_per_week": null,
+          "requests_per_month": null
+        },
+        {
+          "model": "GPT 6 Luna",
+          "note": null,
+          "requests_per_5h": 4230,
+          "requests_per_week": 10560,
+          "requests_per_month": 21130
+        },
+        {
+          "model": "LongCat 2.5 Preview Free",
+          "note": null,
+          "requests_per_5h": null,
+          "requests_per_week": null,
+          "requests_per_month": null
+        }
+      ]
     }
   },
   "source_url": "https://opencode.ai/docs/zh-cn/go/",
-  "last_fetched_at": "2026-09-25T20:05:27.067123+00:00"
+  "last_fetched_at": "2026-09-26T19:18:46.273281+00:00"
 }
