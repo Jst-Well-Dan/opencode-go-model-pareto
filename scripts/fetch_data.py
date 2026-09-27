@@ -31,6 +31,9 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parent.parent
 QUOTA_PATH = ROOT / "data" / "snapshots" / "quota-snapshots.json"
 AA_PATH = ROOT / "data" / "snapshots" / "aa-scores.json"
+LMARENA_PATH = ROOT / "data" / "snapshots" / "lmarena-scores.json"
+LMARENA_ALIAS_PATH = ROOT / "data" / "registry" / "lmarena-alias.json"
+LMARENA_ROWS_URL = "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=text_style_control&split=latest&offset={off}&length=100"
 MODALITY_CACHE_PATH = ROOT / "data" / "cache" / "aa-modality-cache.json"
 GENERATOR_PATH = ROOT / "scripts" / "generate.py"
 OPENCODE_URL = "https://opencode.ai/docs/zh-cn/go/"
@@ -46,6 +49,7 @@ def _load_json_strict_fetch(path: Path, name: str):
         raise RuntimeError(f"failed to load {path}: {e}")
 
 AA_SLUG_ALIAS: dict[str, str] = _load_json_strict_fetch(ROOT / "data" / "registry" / "slug-alias.json", "slug-alias")
+LMARENA_ALIAS: dict[str, str | None] = _load_json_strict_fetch(LMARENA_ALIAS_PATH, "lmarena-alias")
 
 
 def _slug_for_model(model: str) -> str:
@@ -232,6 +236,79 @@ def fetch_aa_via_api() -> dict[str, float]:
     if not scores:
         raise RuntimeError(f"AA API 解析后得分为空，已抓 {len(data)} 条但无 intelligence_index")
     return scores
+
+
+def fetch_lmarena_overall() -> dict[str, dict[str, Any]]:
+    """抓 LMArena text_style_control/latest 全量 rows，本地过滤 category=overall。
+    返回 {model_name: {rating, rank, date}}。stdlib 无依赖；服务端限流较严，
+    页间 sleep 1s，429/5xx 按 fetch() 同风格退避重试。"""
+    import random
+    def _get(off: int) -> dict[str, Any]:
+        url = LMARENA_ROWS_URL.format(off=off)
+        last: Exception | None = None
+        for attempt in range(8):
+            try:
+                req = Request(url, headers={"User-Agent": USER_AGENT})
+                with urlopen(req, timeout=30) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except HTTPError as e:
+                last = e
+                if e.code == 404:
+                    break
+            except (URLError, TimeoutError, OSError) as e:
+                last = e
+            sleep_s = min(90, 5 * (attempt + 1) + random.uniform(0, 1))
+            print(f"lmarena rows {off} failed (attempt {attempt+1}/8): {last} retry in {sleep_s:.1f}s", file=sys.stderr)
+            time.sleep(sleep_s)
+        raise RuntimeError(f"failed to fetch lmarena rows offset={off}: {last}")
+    first = _get(0)
+    total = first.get("num_rows_total") or len(first.get("rows", []))
+    rows = [r["row"] for r in first.get("rows", [])]
+    for off in range(100, total, 100):
+        time.sleep(1.0)
+        doc = _get(off)
+        rows += [r["row"] for r in doc.get("rows", [])]
+    overall: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        if r.get("category") != "overall":
+            continue
+        name = r.get("model_name")
+        if not name or not isinstance(r.get("rating"), (int, float)):
+            continue
+        overall[name] = {"rating": float(r["rating"]), "rank": r.get("rank"), "date": r.get("leaderboard_publish_date")}
+    if not overall:
+        raise RuntimeError("lmarena overall 解析为空")
+    return overall
+
+
+def update_lmarena_doc(lmarena_doc: dict[str, Any], quota_rows: list[dict[str, Any]], overall: dict[str, dict[str, Any]], snapshot_date: str) -> dict[str, Any]:
+    """按配额模型顺序重建当日 LMArena 快照。alias 缺失/榜单无分记 null 并告警，不阻断更新（与 AA 的未知模态同策略）。"""
+    snapshots = lmarena_doc.get("snapshots")
+    if not isinstance(snapshots, dict) or not snapshots:
+        raise ValueError("lmarena JSON does not match the expected schema")
+    snap_models = []
+    for row in quota_rows:
+        model = row["model"]
+        lid = LMARENA_ALIAS.get(model)
+        hit = overall.get(lid) if lid else None
+        if lid and hit is None:
+            print(f"lmarena no rating for {model!r} (id={lid})，记为缺失", file=sys.stderr)
+        elif lid is None and model not in LMARENA_ALIAS:
+            print(f"lmarena alias missing for new model {model!r}，记为缺失（请补 data/registry/lmarena-alias.json 后重跑）", file=sys.stderr)
+        snap_models.append({
+            "model": model,
+            "lmarena_model_id": lid,
+            "rating": round(hit["rating"], 2) if hit else None,
+            "rank": hit.get("rank") if hit else None,
+        })
+    updated = dict(lmarena_doc)
+    updated["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
+    updated.setdefault("snapshots", {})
+    for d, snap in list(updated["snapshots"].items()):
+        if d != snapshot_date and snap.get("label") == "今日":
+            snap["label"] = ""
+    updated["snapshots"][snapshot_date] = {"label": "今日", "models": snap_models}
+    return updated
 
 
 def parse_quota_value(value: str) -> int | None:
@@ -669,6 +746,7 @@ def main() -> None:
         output_dir = ROOT / output_dir
     output_quota_path = output_dir / "data" / "snapshots" / QUOTA_PATH.name
     output_aa_path = output_dir / "data" / "snapshots" / AA_PATH.name
+    output_lmarena_path = output_dir / "data" / "snapshots" / LMARENA_PATH.name
     output_html_path = output_dir / "index.html"
 
     print(f"Fetching {OPENCODE_URL}")
@@ -678,13 +756,21 @@ def main() -> None:
     aa_scores = fetch_aa_via_api()
     print(f"Parsed {len(quota_rows)} quota rows and {len(aa_scores)} AA scores (official API)")
 
+    print(f"Fetching LMArena text_style_control/latest (overall)")
+    lmarena_overall = fetch_lmarena_overall()
+    print(f"Parsed {len(lmarena_overall)} lmarena overall ratings")
+
     quota_doc = json.loads(QUOTA_PATH.read_text(encoding="utf-8"))
     aa_doc = json.loads(AA_PATH.read_text(encoding="utf-8"))
     updated_quota, updated_aa = update_documents(quota_doc, aa_doc, quota_rows, aa_scores, args.date)
     atomic_write_json(output_quota_path, updated_quota)
     atomic_write_json(output_aa_path, updated_aa)
+    lmarena_doc = json.loads(LMARENA_PATH.read_text(encoding="utf-8"))
+    updated_lmarena = update_lmarena_doc(lmarena_doc, quota_rows, lmarena_overall, args.date)
+    atomic_write_json(output_lmarena_path, updated_lmarena)
     print(f"Updated {output_quota_path}")
     print(f"Updated {output_aa_path}")
+    print(f"Updated {output_lmarena_path}")
 
 
     if not args.no_generate:
@@ -695,6 +781,7 @@ def main() -> None:
             "--template", str(ROOT / "template" / "opencode-go-model-pareto.template.html"),
             "--quota", str(output_quota_path),
             "--aa", str(output_aa_path),
+            "--lmarena", str(output_lmarena_path),
             "--output", str(output_html_path),
         ], cwd=ROOT, check=True)
 
