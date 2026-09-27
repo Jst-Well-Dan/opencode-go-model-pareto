@@ -125,7 +125,7 @@
   },
   "LongCat 2.5 Preview Free": {
     "brand": "longcat",
-    "modality": "未知"
+    "modality": "多模态"
   },
   "LongCat-2.0": {
     "brand": "longcat",
@@ -149,7 +149,7 @@
   },
   "MiMo-V2.6-Flash": {
     "brand": "xiaomimimo",
-    "modality": "未知"
+    "modality": "多模态"
   },
   "MiMo-V2.6-Pro": {
     "brand": "xiaomimimo",
@@ -241,7 +241,7 @@
   },
   "Space Bunny Free": {
     "brand": "unknown",
-    "modality": "未知"
+    "modality": "多模态"
   },
   "Step 3.5 Flash": {
     "brand": "step",
@@ -261,6 +261,6 @@
   },
   "Union Alpha Free": {
     "brand": "unknown",
-    "modality": "未知"
+    "modality": "多模态"
   }
 }

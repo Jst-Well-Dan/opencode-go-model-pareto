@@ -33,7 +33,10 @@ QUOTA_PATH = ROOT / "data" / "snapshots" / "quota-snapshots.json"
 AA_PATH = ROOT / "data" / "snapshots" / "aa-scores.json"
 LMARENA_PATH = ROOT / "data" / "snapshots" / "lmarena-scores.json"
 LMARENA_ALIAS_PATH = ROOT / "data" / "registry" / "lmarena-alias.json"
-LMARENA_ROWS_URL = "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=text_style_control&split=latest&offset={off}&length=100"
+LMARENA_ROWS_URL = "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=agent&split=latest&offset={off}&length=100"
+LMARENA_FULL_URL = "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=agent&split=full&offset={off}&length=100"
+LMARENA_STALE_MAX_DAYS = 60  # 退榜模型最后已知分最多顺延天数，超期仍记缺失
+LMARENA_STALE_MAX_DAYS_OVERRIDE = {"Qwen3.6 Plus": 120}  # 配额窗口前退榜（最后见于 2026-07-07），破例顺延
 MODALITY_CACHE_PATH = ROOT / "data" / "cache" / "aa-modality-cache.json"
 GENERATOR_PATH = ROOT / "scripts" / "generate.py"
 OPENCODE_URL = "https://opencode.ai/docs/zh-cn/go/"
@@ -239,8 +242,10 @@ def fetch_aa_via_api() -> dict[str, float]:
 
 
 def fetch_lmarena_overall() -> dict[str, dict[str, Any]]:
-    """抓 LMArena text_style_control/latest 全量 rows，本地过滤 category=overall。
-    返回 {model_name: {rating, rank, date}}。stdlib 无依赖；服务端限流较严，
+    """抓 LMArena agent/latest 全量 rows，本地过滤 category=overall。
+    返回 {model_name: {score, rank, date}}。score 为官网 Overall Dynamic ranking
+    的 win share（约 -0.16 ~ +0.14，4 位小数），与 text_style_control 的
+    Bradley-Terry rating（1400 分段）不可比。stdlib 无依赖；服务端限流较严，
     页间 sleep 1s，429/5xx 按 fetch() 同风格退避重试。"""
     import random
     def _get(off: int) -> dict[str, Any]:
@@ -273,16 +278,202 @@ def fetch_lmarena_overall() -> dict[str, dict[str, Any]]:
         if r.get("category") != "overall":
             continue
         name = r.get("model_name")
-        if not name or not isinstance(r.get("rating"), (int, float)):
+        if not name or not isinstance(r.get("score"), (int, float)):
             continue
-        overall[name] = {"rating": float(r["rating"]), "rank": r.get("rank"), "date": r.get("leaderboard_publish_date")}
+        overall[name] = {"score": float(r["score"]), "rank": r.get("rank"), "date": r.get("leaderboard_publish_date")}
     if not overall:
         raise RuntimeError("lmarena overall 解析为空")
     return overall
 
 
+def fetch_lmarena_full() -> list[dict[str, Any]]:
+    """抓 LMArena agent/full 全量历史 rows（约 1300+ 行，32 个 publish 快照）。
+    只做分页拉取与 JSON 解析，不过滤，由 backfill_lmarena_history 按配额日期消费。"""
+    import random
+    def _get(off: int) -> dict[str, Any]:
+        url = LMARENA_FULL_URL.format(off=off)
+        last: Exception | None = None
+        for attempt in range(8):
+            try:
+                req = Request(url, headers={"User-Agent": USER_AGENT})
+                with urlopen(req, timeout=30) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except HTTPError as e:
+                last = e
+                if e.code == 404:
+                    break
+            except (URLError, TimeoutError, OSError) as e:
+                last = e
+            sleep_s = min(90, 5 * (attempt + 1) + random.uniform(0, 1))
+            print(f"lmarena full {off} failed (attempt {attempt+1}/8): {last} retry in {sleep_s:.1f}s", file=sys.stderr)
+            time.sleep(sleep_s)
+        raise RuntimeError(f"failed to fetch lmarena full offset={off}: {last}")
+    first = _get(0)
+    total = first.get("num_rows_total") or len(first.get("rows", []))
+    rows = [r["row"] for r in first.get("rows", [])]
+    for off in range(100, total, 100):
+        time.sleep(1.0)
+        doc = _get(off)
+        rows += [r["row"] for r in doc.get("rows", [])]
+    if not rows:
+        raise RuntimeError("lmarena full 拉取为空")
+    return rows
+
+
+def _norm_agent_name(name: str) -> str:
+    """Agent 榜名归一：去括号配置后缀（如 (Max)/(xHigh)/(High) (0813)）、去
+    配额侧 Contributor 尾缀，再 lowercase 去非字母数字。用于历史快照的模糊匹配
+    （括号内的 Max/High 是评测配置而非不同模型；Qwen Plus/Max 这类非括号差异不受影响）。"""
+    base = re.sub(r"\s*\([^)]*\)", "", name or "")
+    base = re.sub(r"\s+contributor\s*$", "", base, flags=re.I)
+    return re.sub(r"[^a-z0-9]", "", base.lower())
+
+
+def _match_old_publish(model: str, by_pub: dict[str, dict[str, Any]], before_day: str) -> tuple[str, dict[str, Any], str] | None:
+    """配额窗口前就退榜的模型：在 before_day 之前的原始 publish 中找最后一期归一匹配。
+    超该模型 cap 直接停（更早只会更老）。返回 (lmarena_model_id, row, publish_date)。"""
+    want = _norm_agent_name(model)
+    cap = _stale_cap_for(model)
+    try:
+        end = date.fromisoformat(before_day[:10])
+    except ValueError:
+        return None
+    for pub in sorted(by_pub, reverse=True):
+        if pub >= before_day[:10]:
+            continue
+        rows = by_pub[pub]
+        lid0 = LMARENA_ALIAS.get(model)
+        if lid0 and lid0 in rows:
+            return lid0, rows[lid0], pub
+        cands = [(n, r) for n, r in rows.items() if _norm_agent_name(n) == want]
+        if not cands:
+            continue
+        cands.sort(key=lambda t: (1 if "(" in t[0] else 0, t[1].get("rank") or 9999))
+        try:
+            age = (end - date.fromisoformat(pub)).days
+        except ValueError:
+            continue
+        if age < 0 or age > cap:
+            return None
+        return cands[0][0], cands[0][1], pub
+    return None
+
+
+def backfill_lmarena_history(quota_doc: dict[str, Any], lmarena_doc: dict[str, Any], full_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """用 agent/full 历史为每个配额日期重建 LMArena 快照（最新日除外，由每日 latest 流程维护）。
+    每个配额日期取 publish_date <= 当日的最近一期榜单；匹配优先级：alias 精确 > 归一模糊
+    （同分多配置时优先无括号的基础版，再按 rank）。alias 缺失/榜单无分记 null。"""
+    from collections import defaultdict
+    by_pub: dict[str, dict[str, Any]] = defaultdict(dict)
+    for r in full_rows:
+        if r.get("category") != "overall":
+            continue
+        name = r.get("model_name")
+        if not name or not isinstance(r.get("score"), (int, float)):
+            continue
+        by_pub[r.get("leaderboard_publish_date")][name] = r
+    pubs = sorted(by_pub)
+    quota_dates = sorted(quota_doc.get("snapshots", {}))
+    if not quota_dates:
+        raise ValueError("quota snapshots 为空，无法回填")
+    latest = quota_dates[-1]
+    updated = dict(lmarena_doc)
+    updated["metric"] = "LMArena Agent overall score (win share, Overall Dynamic ranking)"
+    updated["source"] = "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
+    updated["source_url"] = "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=agent&split=latest"
+    updated.setdefault("snapshots", {})
+    for d in quota_dates:
+        if d == latest:
+            continue
+        cand = [p for p in pubs if p <= d[:10]]
+        if not cand:
+            print(f"lmarena history: no publish <= {d}, skip", file=sys.stderr)
+            continue
+        pub = max(cand)
+        rows = by_pub[pub]
+        fuzzy_used: list[str] = []
+        models = []
+        for qrow in quota_doc["snapshots"][d].get("models", []):
+            model = qrow["model"]
+            alias_lid = LMARENA_ALIAS.get(model)
+            lid, hit = alias_lid, rows.get(alias_lid) if alias_lid else None
+            if hit is None:
+                want = _norm_agent_name(model)
+                cands = [(n, r) for n, r in rows.items() if _norm_agent_name(n) == want]
+                if cands:
+                    cands.sort(key=lambda t: (1 if "(" in t[0] else 0, t[1].get("rank") or 9999))
+                    lid, hit = cands[0][0], cands[0][1]
+                    fuzzy_used.append(f"{model}~{lid}")
+                else:
+                    lid = alias_lid
+            if hit is None and (alias_lid is not None or model in LMARENA_ALIAS):
+                filled = _fill_lmarena_stale(model, updated["snapshots"], d)
+                if filled:
+                    lid, hit = filled["lmarena_model_id"], {"score": filled["rating"], "rank": filled["rank"]}
+                    stale_asof = filled["asof"]
+                else:
+                    old = _match_old_publish(model, by_pub, d[:10])
+                    if old:
+                        lid, hit = old[0], {"score": old[1]["score"], "rank": old[1].get("rank")}
+                        stale_asof = old[2]
+                        fuzzy_used.append(f"{model}~{lid}@{old[2]}")
+                    else:
+                        stale_asof = None
+            else:
+                stale_asof = None
+            entry = {
+                "model": model,
+                "lmarena_model_id": lid,
+                "rating": round(float(hit["score"]), 4) if hit else None,
+                "rank": hit.get("rank") if hit else None,
+            }
+            if stale_asof:
+                entry["stale"] = True
+                entry["asof"] = stale_asof
+            models.append(entry)
+        hits = sum(1 for m in models if m["rating"] is not None)
+        nstale = sum(1 for m in models if m.get("stale"))
+        print(f"lmarena history {d}: publish={pub} hits={hits}/{len(models)} (stale={nstale})" + (f" fuzzy={fuzzy_used}" if fuzzy_used else ""))
+        updated["snapshots"][d] = {"label": "", "source_date": pub, "models": models}
+    return updated
+
+
+def _stale_cap_for(model: str) -> int:
+    return LMARENA_STALE_MAX_DAYS_OVERRIDE.get(model, LMARENA_STALE_MAX_DAYS)
+
+
+def _fill_lmarena_stale(model: str, snapshots: dict[str, Any], before_date: str, max_days: int | None = None) -> dict[str, Any] | None:
+    """在已有快照中找 before_date 之前该模型最后一次非 null 评分（顺延）。
+    超 LMARENA_STALE_MAX_DAYS 天返回 None。返回 {lmarena_model_id, rating, rank, asof}，
+    asof 取该期快照的 source_date（实际榜单日）或快照键。"""
+    try:
+        end = date.fromisoformat(before_date[:10])
+    except ValueError:
+        return None
+    for d in sorted(snapshots, reverse=True):
+        if d >= before_date:
+            continue
+        snap = snapshots[d]
+        if not isinstance(snap, dict):
+            continue
+        for m in snap.get("models", []):
+            if m.get("model") != model or m.get("rating") is None:
+                continue
+            asof = m.get("asof") or snap.get("source_date") or d[:10]
+            try:
+                age = (end - date.fromisoformat(asof[:10])).days
+            except ValueError:
+                continue
+            if age < 0 or age > (max_days if max_days is not None else _stale_cap_for(model)):
+                return None
+            return {"lmarena_model_id": m.get("lmarena_model_id"), "rating": m["rating"],
+                    "rank": m.get("rank"), "asof": asof[:10]}
+    return None
+
+
 def update_lmarena_doc(lmarena_doc: dict[str, Any], quota_rows: list[dict[str, Any]], overall: dict[str, dict[str, Any]], snapshot_date: str) -> dict[str, Any]:
-    """按配额模型顺序重建当日 LMArena 快照。alias 缺失/榜单无分记 null 并告警，不阻断更新（与 AA 的未知模态同策略）。"""
+    """按配额模型顺序重建当日 LMArena 快照。alias 缺失/榜单无分时用历史最后已知分顺延
+    （stale=true + asof，不阻断更新）；无历史或超期才记 null。"""
     snapshots = lmarena_doc.get("snapshots")
     if not isinstance(snapshots, dict) or not snapshots:
         raise ValueError("lmarena JSON does not match the expected schema")
@@ -292,15 +483,35 @@ def update_lmarena_doc(lmarena_doc: dict[str, Any], quota_rows: list[dict[str, A
         lid = LMARENA_ALIAS.get(model)
         hit = overall.get(lid) if lid else None
         if lid and hit is None:
-            print(f"lmarena no rating for {model!r} (id={lid})，记为缺失", file=sys.stderr)
+            print(f"lmarena no rating for {model!r} (id={lid})，尝试顺延历史", file=sys.stderr)
         elif lid is None and model not in LMARENA_ALIAS:
             print(f"lmarena alias missing for new model {model!r}，记为缺失（请补 data/registry/lmarena-alias.json 后重跑）", file=sys.stderr)
-        snap_models.append({
-            "model": model,
-            "lmarena_model_id": lid,
-            "rating": round(hit["rating"], 2) if hit else None,
-            "rank": hit.get("rank") if hit else None,
-        })
+        if hit:
+            snap_models.append({
+                "model": model,
+                "lmarena_model_id": lid,
+                "rating": round(hit["score"], 4),
+                "rank": hit.get("rank"),
+            })
+            continue
+        filled = _fill_lmarena_stale(model, snapshots, snapshot_date) if lid is not None or model in LMARENA_ALIAS else None
+        if filled:
+            print(f"lmarena stale fill {model!r} <- {filled['asof']} ({filled['rating']})", file=sys.stderr)
+            snap_models.append({
+                "model": model,
+                "lmarena_model_id": filled["lmarena_model_id"],
+                "rating": filled["rating"],
+                "rank": filled["rank"],
+                "stale": True,
+                "asof": filled["asof"],
+            })
+        else:
+            snap_models.append({
+                "model": model,
+                "lmarena_model_id": lid,
+                "rating": None,
+                "rank": None,
+            })
     updated = dict(lmarena_doc)
     updated["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
     updated.setdefault("snapshots", {})
@@ -739,6 +950,7 @@ def main() -> None:
     parser.add_argument("--date", default=datetime.now(timezone(timedelta(hours=8))).date().isoformat(), help="snapshot date, default: today (Asia/Shanghai)")
     parser.add_argument("--no-generate", action="store_true", help="only update JSON files")
     parser.add_argument("--output-dir", type=Path, help="write updated JSON/HTML under this directory instead of the project root")
+    parser.add_argument("--lmarena-history", action="store_true", help="仅用 agent/full 历史回填各配额日期的 LMArena 快照（最新日不动），不抓配额/AA")
     args = parser.parse_args()
 
     output_dir = args.output_dir or ROOT
@@ -749,6 +961,28 @@ def main() -> None:
     output_lmarena_path = output_dir / "data" / "snapshots" / LMARENA_PATH.name
     output_html_path = output_dir / "index.html"
 
+    if args.lmarena_history:
+        print("Backfilling LMArena history from agent/full ...")
+        quota_doc = json.loads(QUOTA_PATH.read_text(encoding="utf-8"))
+        full_rows = fetch_lmarena_full()
+        print(f"Fetched {len(full_rows)} agent full rows")
+        lmarena_doc = json.loads(LMARENA_PATH.read_text(encoding="utf-8"))
+        updated = backfill_lmarena_history(quota_doc, lmarena_doc, full_rows)
+        atomic_write_json(output_lmarena_path, updated)
+        print(f"Updated {output_lmarena_path}")
+        if not args.no_generate:
+            import subprocess
+            subprocess.run([
+                sys.executable,
+                str(GENERATOR_PATH),
+                "--template", str(ROOT / "template" / "opencode-go-model-pareto.template.html"),
+                "--quota", str(QUOTA_PATH),
+                "--aa", str(AA_PATH),
+                "--lmarena", str(output_lmarena_path),
+                "--output", str(output_html_path),
+            ], cwd=ROOT, check=True)
+        return
+
     print(f"Fetching {OPENCODE_URL}")
     opencode_source = fetch(OPENCODE_URL)
     quota_rows = parse_opencode_quotas(opencode_source)
@@ -756,7 +990,7 @@ def main() -> None:
     aa_scores = fetch_aa_via_api()
     print(f"Parsed {len(quota_rows)} quota rows and {len(aa_scores)} AA scores (official API)")
 
-    print(f"Fetching LMArena text_style_control/latest (overall)")
+    print(f"Fetching LMArena agent/latest (overall)")
     lmarena_overall = fetch_lmarena_overall()
     print(f"Parsed {len(lmarena_overall)} lmarena overall ratings")
 
