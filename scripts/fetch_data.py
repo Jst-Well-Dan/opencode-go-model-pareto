@@ -537,9 +537,11 @@ def parse_quota_value(value: str) -> int | None:
 def parse_opencode_quotas(source: str) -> list[dict[str, Any]]:
     parser = TableParser()
     parser.feed(source)
-    expected_headers = ["Model", "每 5 小时请求数", "每周请求数", "每月请求数"]
     for idx, table in enumerate(parser.tables):
-        if not table or table[0] != expected_headers:
+        if not table or len(table[0]) != 4:
+            continue
+        # 官网表头第一列曾为英文 "Model"，现为中文 "模型"，兼容两者
+        if table[0][0] not in ("Model", "模型") or table[0][1:] != ["每 5 小时请求数", "每周请求数", "每月请求数"]:
             continue
         notes = parser.cell_notes[idx] if idx < len(parser.cell_notes) else []
         rows = []
