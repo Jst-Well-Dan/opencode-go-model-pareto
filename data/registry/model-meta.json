@@ -239,6 +239,10 @@
     "brand": "qwen",
     "modality": "多模态"
   },
+  "Space Bunny": {
+    "brand": "unknown",
+    "modality": "未知"
+  },
   "Space Bunny Free": {
     "brand": "unknown",
     "modality": "多模态"
