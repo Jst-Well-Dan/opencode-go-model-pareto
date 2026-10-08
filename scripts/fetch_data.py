@@ -673,7 +673,7 @@ def ensure_icon_for_brand(brand: str, model_slug: str) -> None:
             logo_name, data = res
     if not data:
         # 常见品牌映射回落（与 generate 共用逻辑）
-        fallback_map = {"zhipu":"zai","muse":"meta","qwen":"alibaba","hunyuan":"tencent","grok":"spacexai","nemotron":"nvidia","step":"stepfun","xiaomimimo":"xiaomi"}
+        fallback_map = {"zhipu":"zai","muse":"meta","qwen":"alibaba","hunyuan":"tencent","grok":"spacexai","nemotron":"nvidia","step":"stepfun","xiaomimimo":"xiaomi","claude":"anthropic"}
         alt = fallback_map.get(brand)
         if alt: data = _fetch_svg_bytes(alt); logo_name = alt if data else logo_name
     if not data:
@@ -735,6 +735,7 @@ def ensure_modality_and_icon_for_models(models: list[str]) -> None:
         elif low.startswith("step"): brand="step"
         elif low.startswith("longcat"): brand="longcat"
         elif low.startswith("ox"): brand="ox"
+        elif low.startswith("claude"): brand="claude"
         else: brand="unknown"
         _ensure_model_meta_entry(model, brand, modality)
         ensure_icon_for_brand(brand, slug)
