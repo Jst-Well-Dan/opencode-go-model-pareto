@@ -362,7 +362,7 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-u">?</i> 模态未知</span>
 <span style="margin-left:auto;color:#94a3b8">对数刻度 · 基准 {base_model["model"]} ({base_model["requests_per_5h"]:,} / 5h)</span></div>
 {svg_str}</div><div class="winners">{winners_html}</div>
-<div class="foot"><div>数据来源：<a href="https://opencode.ai/docs/zh-cn/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 相对成本以配额最多者为 1.0<br>
+<div class="foot"><div>数据来源：<a href="https://opencode.ai/v2/docs/console/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 相对成本以配额最多者为 1.0<br>
 生成时间 {date} · 已嵌入全部数据，无需联网 · <span style="color:#64748b">index.html</span> · <a href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" style="color:#0f766e;font-weight:650;text-decoration:none;border-bottom:1px dashed #99f6e4">GitHub: Jst-Well-Dan/opencode-go-model-pareto</a></div>
 </div></div></div></body></html>''', frontier
 
@@ -578,7 +578,7 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="dot-goat"></i> Command GOAT</span>
 <span style="margin-left:auto;color:#94a3b8">对数刻度 · 按智商降序</span></div>
 {svg_str}</div>
-<div class="foot"><div>数据来源：<a href="https://opencode.ai/docs/zh-cn/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://commandcode.ai/docs/plans/goat">GOAT</a> 核心两表 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 对数刻度；GOAT 月档位 $20~$70，OC 固定 $15/30/60<br>
+<div class="foot"><div>数据来源：<a href="https://opencode.ai/v2/docs/console/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://commandcode.ai/docs/plans/goat">GOAT</a> 核心两表 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 对数刻度；GOAT 月档位 $20~$70，OC 固定 $15/30/60<br>
 生成时间 {date} · 已嵌入全部数据，无需联网 · <a href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" style="color:#0f766e;font-weight:650;text-decoration:none;border-bottom:1px dashed #99f6e4">GitHub: Jst-Well-Dan/opencode-go-model-pareto</a></div>
 </div></div></div></body></html>''', rows
 

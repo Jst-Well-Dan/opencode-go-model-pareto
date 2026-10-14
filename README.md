@@ -52,7 +52,7 @@ python scripts/generate_rank_change.py
 ```
 
 数据来源：
-- **OpenCode Go 配额**：https://opencode.ai/docs/zh-cn/go/
+- **OpenCode Go 配额**：https://opencode.ai/v2/docs/console/go/
 - **AA 智力评分**：https://aihot.virxact.com/leaderboard/methodology（镜像，免 Key；官网 `api/v2/data/llms/models` 为 Pro 付费已不再尝试）
 - **模态与图标**：https://artificialanalysis.ai/models/<slug>（`Input modality` → `Supports: text / text and image`）及 https://artificialanalysis.ai/img/logos/<slug>_small.svg（如 `LongCat-2.0` 已替换为官方绿猫 Logo）
 

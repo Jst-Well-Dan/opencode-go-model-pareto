@@ -3,7 +3,7 @@
 
 - 智力分：走官方 https://artificialanalysis.ai/api/v2/data/llms/models 需 x-api-key（免费 Key）
   解析失败直接抛错，交由 GitHub Actions 失败通知邮件
-- 配额：仍抓 https://opencode.ai/docs/zh-cn/go/
+- 配额：仍抓 https://opencode.ai/v2/docs/console/go/
 - 模态：scrape 结果缓存到 data/aa-modality-cache.json，新模型才抓取
 
 Usage:
@@ -39,9 +39,9 @@ LMARENA_STALE_MAX_DAYS = 60  # 退榜模型最后已知分最多顺延天数，�
 LMARENA_STALE_MAX_DAYS_OVERRIDE = {"Qwen3.6 Plus": 120}  # 配额窗口前退榜（最后见于 2026-07-07），破例顺延
 MODALITY_CACHE_PATH = ROOT / "data" / "cache" / "aa-modality-cache.json"
 GENERATOR_PATH = ROOT / "scripts" / "generate.py"
-OPENCODE_URL = "https://opencode.ai/docs/zh-cn/go/"
+OPENCODE_URL = "https://opencode.ai/v2/docs/console/go/"
 AA_API_URL = "https://artificialanalysis.ai/api/v2/data/llms/models"
-USER_AGENT = "opencode-go-model-pareto/1.0 (+https://opencode.ai/docs/zh-cn/go/)"
+USER_AGENT = "opencode-go-model-pareto/1.0 (+https://opencode.ai/v2/docs/console/go/)"
 
 def _load_json_strict_fetch(path: Path, name: str):
     if not path.exists():

@@ -123,7 +123,7 @@ body{{font:14px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft 
 <div class="legend"><span><i class="dot before"></i>变化前 · {before}</span><span><i class="dot after"></i>变化后 · {after}</span><span>↑ 排名上升　↓ 排名下降</span></div>
 <div class="chart-wrap">{svg}</div>
 <div class="summary"><b>结果：</b> <span class="up">{up} 个模型排名上升</span> · <span class="down">{down} 个模型排名下降</span> · {len(rows)} 个模型前后均有评分。排名按 AA Intelligence Index 从高到低计算。</div>
-<footer class="foot">数据来源：<a href="https://aihot.virxact.com/leaderboard/methodology">Artificial Analysis</a> Intelligence Index 与 <a href="https://opencode.ai/docs/zh-cn/go/">OpenCode Go</a> 快照 · 数据全部内嵌，可离线打开<br>生成脚本：scripts/generate_rank_change.py</footer>
+<footer class="foot">数据来源：<a href="https://aihot.virxact.com/leaderboard/methodology">Artificial Analysis</a> Intelligence Index 与 <a href="https://opencode.ai/v2/docs/console/go/">OpenCode Go</a> 快照 · 数据全部内嵌，可离线打开<br>生成脚本：scripts/generate_rank_change.py</footer>
 </div></main></body></html>'''
     output.write_text(html_out, encoding="utf-8")
     print(f"Generated {output} ({len(html_out)} bytes): {before} -> {after}, {len(rows)} models")
