@@ -1,4 +1,8 @@
 {
+  "Beam Free": {
+    "brand": "unknown",
+    "modality": "未知"
+  },
   "Cat Jam Free": {
     "brand": "unknown",
     "modality": "未知"
@@ -266,6 +270,10 @@
   "Step 3.7 Flash": {
     "brand": "step",
     "modality": "纯文字"
+  },
+  "Step 5 Preview": {
+    "brand": "step",
+    "modality": "未知"
   },
   "Step 5 Preview Free": {
     "brand": "step",
