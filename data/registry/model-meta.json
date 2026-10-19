@@ -179,6 +179,10 @@
     "brand": "minimax",
     "modality": "多模态"
   },
+  "MiniMax M3.1 Flash Free": {
+    "brand": "minimax",
+    "modality": "未知"
+  },
   "Muse Spark 1.2": {
     "brand": "muse",
     "modality": "多模态"
