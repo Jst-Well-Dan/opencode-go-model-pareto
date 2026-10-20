@@ -52,7 +52,7 @@ def _load_json_strict_fetch(path: Path, name: str):
         raise RuntimeError(f"failed to load {path}: {e}")
 
 AA_SLUG_ALIAS: dict[str, str] = _load_json_strict_fetch(ROOT / "data" / "registry" / "slug-alias.json", "slug-alias")
-LMARENA_ALIAS: dict[str, str | None] = _load_json_strict_fetch(LMARENA_ALIAS_PATH, "lmarena-alias")
+LMARENA_ALIAS: dict[str, str | list[str] | None] = _load_json_strict_fetch(LMARENA_ALIAS_PATH, "lmarena-alias")
 
 
 def _slug_for_model(model: str) -> str:
@@ -329,6 +329,16 @@ def _norm_agent_name(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", base.lower())
 
 
+def _lmarena_candidates(model: str) -> list[str]:
+    """alias 支持单个字符串或按优先级排列的候选列表（LMArena 改名/换检查点后仍可回溯）。"""
+    value = LMARENA_ALIAS.get(model)
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [v for v in value if isinstance(v, str)]
+    return []
+
+
 def _match_old_publish(model: str, by_pub: dict[str, dict[str, Any]], before_day: str) -> tuple[str, dict[str, Any], str] | None:
     """配额窗口前就退榜的模型：在 before_day 之前的原始 publish 中找最后一期归一匹配。
     超该模型 cap 直接停（更早只会更老）。返回 (lmarena_model_id, row, publish_date)。"""
@@ -342,9 +352,9 @@ def _match_old_publish(model: str, by_pub: dict[str, dict[str, Any]], before_day
         if pub >= before_day[:10]:
             continue
         rows = by_pub[pub]
-        lid0 = LMARENA_ALIAS.get(model)
-        if lid0 and lid0 in rows:
-            return lid0, rows[lid0], pub
+        for lid0 in _lmarena_candidates(model):
+            if lid0 in rows:
+                return lid0, rows[lid0], pub
         cands = [(n, r) for n, r in rows.items() if _norm_agent_name(n) == want]
         if not cands:
             continue
@@ -395,8 +405,13 @@ def backfill_lmarena_history(quota_doc: dict[str, Any], lmarena_doc: dict[str, A
         models = []
         for qrow in quota_doc["snapshots"][d].get("models", []):
             model = qrow["model"]
-            alias_lid = LMARENA_ALIAS.get(model)
-            lid, hit = alias_lid, rows.get(alias_lid) if alias_lid else None
+            alias_cands = _lmarena_candidates(model)
+            alias_lid = alias_cands[0] if alias_cands else None
+            lid, hit = alias_lid, None
+            for cand in alias_cands:
+                if cand in rows:
+                    lid, hit = cand, rows[cand]
+                    break
             if hit is None:
                 want = _norm_agent_name(model)
                 cands = [(n, r) for n, r in rows.items() if _norm_agent_name(n) == want]
@@ -406,7 +421,7 @@ def backfill_lmarena_history(quota_doc: dict[str, Any], lmarena_doc: dict[str, A
                     fuzzy_used.append(f"{model}~{lid}")
                 else:
                     lid = alias_lid
-            if hit is None and (alias_lid is not None or model in LMARENA_ALIAS):
+            if hit is None and model in LMARENA_ALIAS:
                 filled = _fill_lmarena_stale(model, updated["snapshots"], d)
                 if filled:
                     lid, hit = filled["lmarena_model_id"], {"score": filled["rating"], "rank": filled["rank"]}
@@ -480,21 +495,30 @@ def update_lmarena_doc(lmarena_doc: dict[str, Any], quota_rows: list[dict[str, A
     snap_models = []
     for row in quota_rows:
         model = row["model"]
-        lid = LMARENA_ALIAS.get(model)
-        hit = overall.get(lid) if lid else None
-        if lid and hit is None:
-            print(f"lmarena no rating for {model!r} (id={lid})，尝试顺延历史", file=sys.stderr)
-        elif lid is None and model not in LMARENA_ALIAS:
+        cands = _lmarena_candidates(model)
+        lid, hit, matched_rank = (cands[0], None, None) if cands else (None, None, None)
+        for idx, cand in enumerate(cands):
+            if cand in overall:
+                lid, hit, matched_rank = cand, overall[cand], idx
+                break
+        if cands and hit is None:
+            print(f"lmarena no rating for {model!r} (ids={cands})，尝试顺延历史", file=sys.stderr)
+        elif not cands and model not in LMARENA_ALIAS:
             print(f"lmarena alias missing for new model {model!r}，记为缺失（请补 data/registry/lmarena-alias.json 后重跑）", file=sys.stderr)
         if hit:
-            snap_models.append({
+            entry = {
                 "model": model,
                 "lmarena_model_id": lid,
                 "rating": round(hit["score"], 4),
                 "rank": hit.get("rank"),
-            })
+            }
+            # 主候选（最新检查点）未上榜、退用旧检查点/旧命名时标注旧分，不参与帕累托
+            if matched_rank:
+                entry["stale"] = True
+                entry["asof"] = (hit.get("date") or snapshot_date)[:10]
+            snap_models.append(entry)
             continue
-        filled = _fill_lmarena_stale(model, snapshots, snapshot_date) if lid is not None or model in LMARENA_ALIAS else None
+        filled = _fill_lmarena_stale(model, snapshots, snapshot_date) if cands else None
         if filled:
             print(f"lmarena stale fill {model!r} <- {filled['asof']} ({filled['rating']})", file=sys.stderr)
             snap_models.append({
