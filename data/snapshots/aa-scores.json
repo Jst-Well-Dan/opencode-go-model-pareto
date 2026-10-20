@@ -6394,8 +6394,8 @@
         },
         {
           "model": "DeepSeek V4.1 Flash",
-          "aa_model_id": "deepseek-v4-1-flash",
-          "intelligence": 39.5
+          "aa_model_id": "deepseek-v4-1-flash-1017",
+          "intelligence": 45.1
         },
         {
           "model": "Union Alpha Free",
