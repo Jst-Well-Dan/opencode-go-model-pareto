@@ -2,7 +2,7 @@
   "metric": "LMArena Agent overall score (win share, Overall Dynamic ranking)",
   "source": "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset",
   "source_url": "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=agent&split=latest",
-  "last_fetched_at": "2026-10-20T20:04:55.421696+00:00",
+  "last_fetched_at": "2026-10-21T20:18:58.106044+00:00",
   "snapshots": {
     "2026-09-27": {
       "label": "",
@@ -6498,7 +6498,7 @@
       ]
     },
     "2026-10-21": {
-      "label": "今日",
+      "label": "",
       "models": [
         {
           "model": "GLM-5.3-Flash",
@@ -6674,6 +6674,187 @@
           "model": "Gemini 4 Argon Contributor",
           "lmarena_model_id": "Gemini 4 Argon (High)",
           "rating": 0.1212,
+          "rank": 6
+        }
+      ]
+    },
+    "2026-10-22": {
+      "label": "今日",
+      "models": [
+        {
+          "model": "GLM-5.3-Flash",
+          "lmarena_model_id": "GLM-5.3-Flash",
+          "rating": -0.0157,
+          "rank": 34
+        },
+        {
+          "model": "GLM-5.3",
+          "lmarena_model_id": "GLM-5.3 (Max)",
+          "rating": 0.0141,
+          "rank": 26
+        },
+        {
+          "model": "GLM-5.2",
+          "lmarena_model_id": "GLM-5.2 (Max)",
+          "rating": 0.0211,
+          "rank": 22
+        },
+        {
+          "model": "Kimi K3",
+          "lmarena_model_id": "Kimi K3 (Max)",
+          "rating": 0.0177,
+          "rank": 23
+        },
+        {
+          "model": "Kimi K2.7 Code",
+          "lmarena_model_id": null,
+          "rating": null,
+          "rank": null
+        },
+        {
+          "model": "LongCat-2.0",
+          "lmarena_model_id": null,
+          "rating": null,
+          "rank": null
+        },
+        {
+          "model": "LongCat 2.5 Preview Free",
+          "lmarena_model_id": null,
+          "rating": null,
+          "rank": null
+        },
+        {
+          "model": "Step 5 Preview",
+          "lmarena_model_id": "Step 5 Preview",
+          "rating": -0.0147,
+          "rank": 33
+        },
+        {
+          "model": "Beam Free",
+          "lmarena_model_id": null,
+          "rating": null,
+          "rank": null
+        },
+        {
+          "model": "MiMo-V2.6-Flash",
+          "lmarena_model_id": "MiMo-V2.6-Flash",
+          "rating": 0.0252,
+          "rank": 20
+        },
+        {
+          "model": "MiMo-V2.6-Pro",
+          "lmarena_model_id": "MiMo-V2.6-Pro",
+          "rating": 0.0368,
+          "rank": 13
+        },
+        {
+          "model": "MiMo-V2.5",
+          "lmarena_model_id": null,
+          "rating": null,
+          "rank": null
+        },
+        {
+          "model": "MiMo-V2.5-Pro",
+          "lmarena_model_id": "MiMo-V2.5-Pro",
+          "rating": -0.082,
+          "rank": 47
+        },
+        {
+          "model": "MiniMax M3.1 Flash Free",
+          "lmarena_model_id": null,
+          "rating": null,
+          "rank": null
+        },
+        {
+          "model": "MiniMax M3",
+          "lmarena_model_id": "MiniMax-M3",
+          "rating": -0.0963,
+          "rank": 48
+        },
+        {
+          "model": "Muse Spark 1.3 Contributor",
+          "lmarena_model_id": "Muse Spark 1.3 (Max)",
+          "rating": 0.0345,
+          "rank": 15
+        },
+        {
+          "model": "Muse Spark 1.2 Contributor",
+          "lmarena_model_id": "Muse Spark 1.2 (xHigh)",
+          "rating": -0.0675,
+          "rank": 46
+        },
+        {
+          "model": "Qwen3.8 Max",
+          "lmarena_model_id": "Qwen3.8-Max",
+          "rating": 0.0161,
+          "rank": 24
+        },
+        {
+          "model": "Qwen3.8 Flash",
+          "lmarena_model_id": "Qwen3.8-Flash-Next",
+          "rating": -0.0311,
+          "rank": 36
+        },
+        {
+          "model": "Qwen3.7 Plus",
+          "lmarena_model_id": "Qwen3.7-Plus",
+          "rating": -0.0669,
+          "rank": 45
+        },
+        {
+          "model": "DeepSeek V4.1 Flash",
+          "lmarena_model_id": "DeepSeek-V4.1-Flash-20260910 (Max)",
+          "rating": 0.0257,
+          "rank": 19,
+          "stale": true,
+          "asof": "2026-10-20"
+        },
+        {
+          "model": "DeepSeek V4 Pro",
+          "lmarena_model_id": "DeepSeek-V4-Pro (High, 20260813)",
+          "rating": 0.0007,
+          "rank": 30
+        },
+        {
+          "model": "Hy4 preview",
+          "lmarena_model_id": "Hy4 preview",
+          "rating": 0.0241,
+          "rank": 21
+        },
+        {
+          "model": "Hy3",
+          "lmarena_model_id": "Hy3",
+          "rating": -0.0617,
+          "rank": 42
+        },
+        {
+          "model": "Grok 4.7",
+          "lmarena_model_id": "Grok 4.7 (xHigh)",
+          "rating": 0.0318,
+          "rank": 16
+        },
+        {
+          "model": "GPT 6 Luna",
+          "lmarena_model_id": "GPT-6 Luna (Max)",
+          "rating": 0.0303,
+          "rank": 18
+        },
+        {
+          "model": "GPT 5.6 Luna",
+          "lmarena_model_id": "GPT-5.6 Luna (xHigh)",
+          "rating": -0.0233,
+          "rank": 35
+        },
+        {
+          "model": "Claude Haiku 5.5",
+          "lmarena_model_id": "Claude Haiku 5.5 (High)",
+          "rating": 0.0149,
+          "rank": 25
+        },
+        {
+          "model": "Gemini 4 Argon Contributor",
+          "lmarena_model_id": "Gemini 4 Argon (High)",
+          "rating": 0.1203,
           "rank": 6
         }
       ]
