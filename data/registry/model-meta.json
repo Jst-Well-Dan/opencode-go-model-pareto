@@ -179,6 +179,10 @@
     "brand": "minimax",
     "modality": "多模态"
   },
+  "MiniMax M3.1 Flash": {
+    "brand": "minimax",
+    "modality": "多模态"
+  },
   "MiniMax M3.1 Flash Free": {
     "brand": "minimax",
     "modality": "未知"
