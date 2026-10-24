@@ -91,6 +91,10 @@
     "brand": "gemini",
     "modality": "多模态"
   },
+  "Gemini 4 Argon": {
+    "brand": "gemini",
+    "modality": "多模态"
+  },
   "Gemini 4 Argon Contributor": {
     "brand": "gemini",
     "modality": "未知"

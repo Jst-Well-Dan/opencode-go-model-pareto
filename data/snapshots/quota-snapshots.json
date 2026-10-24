@@ -7249,7 +7249,7 @@
       ]
     },
     "2026-10-24": {
-      "label": "今日",
+      "label": "",
       "models": [
         {
           "model": "GPT 5.6 Luna",
@@ -7462,8 +7462,223 @@
           "requests_per_month": 735
         }
       ]
+    },
+    "2026-10-25": {
+      "label": "今日",
+      "models": [
+        {
+          "model": "GPT 5.6 Luna",
+          "note": null,
+          "requests_per_5h": 2050,
+          "requests_per_week": 5100,
+          "requests_per_month": 10250
+        },
+        {
+          "model": "GLM-5.3",
+          "note": null,
+          "requests_per_5h": 220,
+          "requests_per_week": 540,
+          "requests_per_month": 1080
+        },
+        {
+          "model": "GLM-5.2",
+          "note": null,
+          "requests_per_5h": 880,
+          "requests_per_week": 2150,
+          "requests_per_month": 4300
+        },
+        {
+          "model": "Kimi K3",
+          "note": null,
+          "requests_per_5h": 110,
+          "requests_per_week": 250,
+          "requests_per_month": 490
+        },
+        {
+          "model": "Kimi K2.7 Code",
+          "note": null,
+          "requests_per_5h": 1350,
+          "requests_per_week": 3380,
+          "requests_per_month": 6750
+        },
+        {
+          "model": "MiMo-V2.5",
+          "note": null,
+          "requests_per_5h": 30100,
+          "requests_per_week": 75200,
+          "requests_per_month": 150400
+        },
+        {
+          "model": "MiMo-V2.5-Pro",
+          "note": null,
+          "requests_per_5h": 3250,
+          "requests_per_week": 8150,
+          "requests_per_month": 16300
+        },
+        {
+          "model": "MiniMax M3",
+          "note": null,
+          "requests_per_5h": 3200,
+          "requests_per_week": 8000,
+          "requests_per_month": 16000
+        },
+        {
+          "model": "Muse Spark 1.2 Contributor",
+          "note": null,
+          "requests_per_5h": 45300,
+          "requests_per_week": 113300,
+          "requests_per_month": 226600
+        },
+        {
+          "model": "Qwen3.8 Max",
+          "note": null,
+          "requests_per_5h": 160,
+          "requests_per_week": 400,
+          "requests_per_month": 810
+        },
+        {
+          "model": "Qwen3.7 Plus",
+          "note": null,
+          "requests_per_5h": 4300,
+          "requests_per_week": 10800,
+          "requests_per_month": 21600
+        },
+        {
+          "model": "DeepSeek V4 Pro",
+          "note": null,
+          "requests_per_5h": 1050,
+          "requests_per_week": 2600,
+          "requests_per_month": 5200
+        },
+        {
+          "model": "Hy3",
+          "note": null,
+          "requests_per_5h": 4300,
+          "requests_per_week": 10750,
+          "requests_per_month": 21500
+        },
+        {
+          "model": "LongCat-2.0",
+          "note": null,
+          "requests_per_5h": 11400,
+          "requests_per_week": 28600,
+          "requests_per_month": 57200
+        },
+        {
+          "model": "GLM-5.3-Flash",
+          "note": null,
+          "requests_per_5h": 6320,
+          "requests_per_week": 15790,
+          "requests_per_month": 31580
+        },
+        {
+          "model": "Qwen3.8 Flash",
+          "note": null,
+          "requests_per_5h": 5400,
+          "requests_per_week": 13500,
+          "requests_per_month": 27000
+        },
+        {
+          "model": "Hy4 preview",
+          "note": null,
+          "requests_per_5h": 1350,
+          "requests_per_week": 3380,
+          "requests_per_month": 6770
+        },
+        {
+          "model": "Muse Spark 1.3 Contributor",
+          "note": null,
+          "requests_per_5h": 45300,
+          "requests_per_week": 113300,
+          "requests_per_month": 226600
+        },
+        {
+          "model": "DeepSeek V4.1 Flash",
+          "note": null,
+          "requests_per_5h": 34670,
+          "requests_per_week": 86670,
+          "requests_per_month": 173330
+        },
+        {
+          "model": "MiMo-V2.6-Flash",
+          "note": null,
+          "requests_per_5h": 30100,
+          "requests_per_week": 75200,
+          "requests_per_month": 150400
+        },
+        {
+          "model": "MiMo-V2.6-Pro",
+          "note": null,
+          "requests_per_5h": 3250,
+          "requests_per_week": 8150,
+          "requests_per_month": 16300
+        },
+        {
+          "model": "Grok 4.7",
+          "note": null,
+          "requests_per_5h": 169,
+          "requests_per_week": 423,
+          "requests_per_month": 845
+        },
+        {
+          "model": "GPT 6 Luna",
+          "note": null,
+          "requests_per_5h": 4230,
+          "requests_per_week": 10560,
+          "requests_per_month": 21130
+        },
+        {
+          "model": "LongCat 2.5 Preview Free",
+          "note": null,
+          "requests_per_5h": null,
+          "requests_per_week": null,
+          "requests_per_month": null
+        },
+        {
+          "model": "Claude Haiku 5.5",
+          "note": null,
+          "requests_per_5h": 3850,
+          "requests_per_week": 9620,
+          "requests_per_month": 19230
+        },
+        {
+          "model": "Step 5 Preview",
+          "note": null,
+          "requests_per_5h": 430,
+          "requests_per_week": 1070,
+          "requests_per_month": 2130
+        },
+        {
+          "model": "Beam Free",
+          "note": null,
+          "requests_per_5h": null,
+          "requests_per_week": null,
+          "requests_per_month": null
+        },
+        {
+          "model": "MiniMax M3.1 Flash",
+          "note": null,
+          "requests_per_5h": 3880,
+          "requests_per_week": 9690,
+          "requests_per_month": 19380
+        },
+        {
+          "model": "Kimi K3.1 Pro",
+          "note": null,
+          "requests_per_5h": 147,
+          "requests_per_week": 368,
+          "requests_per_month": 735
+        },
+        {
+          "model": "Gemini 4 Argon",
+          "note": null,
+          "requests_per_5h": 440,
+          "requests_per_week": 1080,
+          "requests_per_month": 2120
+        }
+      ]
     }
   },
   "source_url": "https://opencode.ai/v2/docs/console/go/",
-  "last_fetched_at": "2026-10-23T20:01:44.752624+00:00"
+  "last_fetched_at": "2026-10-24T18:55:41.359685+00:00"
 }
