@@ -10,6 +10,9 @@
 Usage:
     python fetch_data.py                          # 仅 OC+AA（GOAT 抓取已归档，见 archive/goat_fetch.py）
     python fetch_data.py --date 2026-08-18 --no-generate
+
+数据源：OpenCode 配额、AA 官方 Data API（免费 Key）、LMArena（HF datasets-server）、
+AIHOT 模型榜（网页解析，仅前 30 名）。
 """
 
 from __future__ import annotations
@@ -38,6 +41,13 @@ LMARENA_ROWS_URL = "https://datasets-server.huggingface.co/rows?dataset=lmarena-
 LMARENA_FULL_URL = "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=agent&split=full&offset={off}&length=100"
 LMARENA_STALE_MAX_DAYS = 60  # 退榜模型最后已知分最多顺延天数，超期仍记缺失
 LMARENA_STALE_MAX_DAYS_OVERRIDE = {"Qwen3.6 Plus": 120}  # 配额窗口前退榜（最后见于 2026-07-07），破例顺延
+# AIHOT 模型榜（第三方评测综合分）。官方明确「模型榜目前只有网页」，/api/v1 与 OpenAPI
+# 里没有榜单端点，只能解析服务端渲染的表格；只取前 30 名（有斩杀线），未上榜属常态。
+AIHOT_PATH = ROOT / "data" / "snapshots" / "aihot-scores.json"
+AIHOT_ALIAS_PATH = ROOT / "data" / "registry" / "aihot-alias.json"
+AIHOT_URL = "https://aihot.news/leaderboard"
+AIHOT_STALE_MAX_DAYS = 60  # 掉榜模型最后已知分最多顺延天数
+AIHOT_MIN_ROWS = 10  # 低于此行数视为页面改版/抓取失败
 MODALITY_CACHE_PATH = ROOT / "data" / "cache" / "aa-modality-cache.json"
 GENERATOR_PATH = ROOT / "scripts" / "generate.py"
 OPENCODE_URL = "https://opencode.ai/v2/docs/console/go/"
@@ -57,6 +67,11 @@ def _load_json_strict_fetch(path: Path, name: str):
 
 AA_SLUG_ALIAS: dict[str, str] = _load_json_strict_fetch(ROOT / "data" / "registry" / "slug-alias.json", "slug-alias")
 LMARENA_ALIAS: dict[str, str | list[str] | None] = _load_json_strict_fetch(LMARENA_ALIAS_PATH, "lmarena-alias")
+# 可选：AIHOT 别名（模型名 -> 榜单 slug）。缺文件时只走归一化默认映射。
+if AIHOT_ALIAS_PATH.exists():
+    AIHOT_ALIAS: dict[str, str | None] = _load_json_strict_fetch(AIHOT_ALIAS_PATH, "aihot-alias")
+else:
+    AIHOT_ALIAS = {}
 
 
 def _slug_for_model(model: str) -> str:
@@ -550,8 +565,142 @@ def update_lmarena_doc(lmarena_doc: dict[str, Any], quota_rows: list[dict[str, A
     return updated
 
 
+# ---------------------------------------------------------------- AIHOT 模型榜
+
+def _aihot_norm(name: str) -> str:
+    """归一化模型名：忽略大小写/空格/连字符，并去掉末尾的检查点日期（如 Qwen3.8 Max 0902）。"""
+    s = re.sub(r"\s+\d{4}$", "", name.strip())
+    return re.sub(r"[^0-9a-zA-Z.]", "", s).lower()
+
+
+def fetch_aihot_board() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+    """抓 AIHOT 综合榜（服务端渲染表格）。返回 ({slug: {...}}, 榜单元信息)。
+
+    官方未提供榜单 API（/api/v1 + OpenAPI 只有资讯类端点），只能解析 HTML；
+    行结构：<tr data-slug="..."> 内含 aria-label="<模型名> AIHOT 评分 <分数>"、
+    「覆盖 <!-- -->100<!-- -->%」以及人民币三档价格。
+    """
+    raw = fetch(AIHOT_URL, retries=3, timeout=45, headers={"Accept": "text/html"})
+    # React 把拼接文本拆成 <!-- --> 分隔，先抹平再解析
+    flat = re.sub(r"<!-- -->", "", raw)
+    board: dict[str, dict[str, Any]] = {}
+    for idx, match in enumerate(re.finditer(r'<tr data-slug="([^"]+)"(.*?)</tr>', flat, re.S)):
+        slug, body = match.group(1), match.group(2)
+        label = re.search(r'aria-label="([^"]+?) AIHOT 评分 ([\d.]+)"', body)
+        if not label:
+            continue
+        cov = re.search(r"覆盖\s*(\d+)\s*%", body)
+        board[slug] = {
+            "name": label.group(1),
+            "score": float(label.group(2)),
+            "coverage": int(cov.group(1)) if cov else None,
+            "rank": idx + 1,
+        }
+    if len(board) < AIHOT_MIN_ROWS:
+        raise RuntimeError(f"AIHOT 榜单只解析到 {len(board)} 行（阀值 {AIHOT_MIN_ROWS}），页面可能改版，本次不更新 AIHOT 数据")
+    updated = re.search(r"(\d{2}/\d{2} \d{2}:\d{2})\s*更新", flat)
+    evals = re.search(r"(\d+)\s*项评测.{0,80}?(\d+)\s*家机构", flat, re.S)
+    meta = {
+        "board_updated_at": updated.group(1) if updated else None,
+        "evaluations": int(evals.group(1)) if evals else None,
+        "institutions": int(evals.group(2)) if evals else None,
+        "rows": len(board),
+    }
+    return board, meta
+
+
+def _aihot_slug_for(model: str, board_by_norm: dict[str, str]) -> str | None:
+    """模型名 -> AIHOT slug。registry 里显式配置优先（null 表示确定不在榜），否则按名字归一化匹配。"""
+    if model in AIHOT_ALIAS:
+        return AIHOT_ALIAS[model]
+    return board_by_norm.get(_aihot_norm(model))
+
+
+def _fill_aihot_stale(model: str, snapshots: dict[str, Any], before_date: str) -> dict[str, Any] | None:
+    """沿历史快照向前找最后已知分（衡量掉榜模型），超过 AIHOT_STALE_MAX_DAYS 天放弃。"""
+    for d in sorted((x for x in snapshots if x < before_date), reverse=True):
+        for m in snapshots[d].get("models", []):
+            if m.get("model") != model or not isinstance(m.get("score"), (int, float)):
+                continue
+            asof = (m.get("asof") or d)[:10]
+            try:
+                age = (date.fromisoformat(before_date[:10]) - date.fromisoformat(asof)).days
+            except ValueError:
+                return None
+            if age < 0 or age > AIHOT_STALE_MAX_DAYS:
+                return None
+            return {"aihot_model_id": m.get("aihot_model_id"), "score": m["score"],
+                    "coverage": m.get("coverage"), "rank": m.get("rank"), "asof": asof}
+    return None
+
+
+def update_aihot_doc(aihot_doc: dict[str, Any], quota_rows: list[dict[str, Any]], board: dict[str, dict[str, Any]], snapshot_date: str, source_meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    """按配额模型顺序重建当日 AIHOT 快照。榜单只收前 30 名，未上榜不算错误：
+    有历史就顺延最后已知分（stale=true + asof，不参与帕累托），否则计 null。"""
+    snapshots = aihot_doc.get("snapshots")
+    if not isinstance(snapshots, dict):
+        snapshots = {}
+    board_by_norm: dict[str, str] = {}
+    for slug, row in board.items():
+        board_by_norm.setdefault(_aihot_norm(row["name"]), slug)
+    snap_models = []
+    fresh = stale = missing = 0
+    missing_models: list[str] = []
+    for row in quota_rows:
+        model = row["model"]
+        slug = _aihot_slug_for(model, board_by_norm)
+        hit = board.get(slug) if slug else None
+        if hit:
+            snap_models.append({
+                "model": model,
+                "aihot_model_id": slug,
+                "score": hit["score"],
+                "coverage": hit.get("coverage"),
+                "rank": hit.get("rank"),
+            })
+            fresh += 1
+            continue
+        filled = _fill_aihot_stale(model, snapshots, snapshot_date)
+        if filled:
+            snap_models.append({
+                "model": model,
+                "aihot_model_id": filled["aihot_model_id"],
+                "score": filled["score"],
+                "coverage": filled.get("coverage"),
+                "rank": filled.get("rank"),
+                "stale": True,
+                "asof": filled["asof"],
+            })
+            stale += 1
+            continue
+        snap_models.append({"model": model, "aihot_model_id": slug, "score": None, "coverage": None, "rank": None})
+        missing += 1
+        if slug:
+            missing_models.append(f"{model}({slug})")
+    if missing_models:
+        print(f"AIHOT 榜单未收录 {len(missing_models)} 个模型（榜单只有前 {len(board)} 名）: " + ", ".join(missing_models), file=sys.stderr)
+    print(f"AIHOT {snapshot_date}: fresh={fresh} stale={stale} missing={missing}")
+    updated = dict(aihot_doc)
+    updated["metric"] = "AIHOT 评分（综合榜）"
+    updated["source"] = AIHOT_URL
+    updated["source_url"] = AIHOT_URL
+    updated["source_note"] = (
+        "AIHOT 综合榜（第三方评测加权：编程 38%、科研 19%、专业办公 19%、知识问答 14%、真人盲选 10%）；"
+        "官方暂无榜单 API，本项目只展示前 30 名内的分数，属个人非商业引用，附回链"
+    )
+    updated["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
+    if source_meta:
+        updated["source_meta"] = source_meta
+    updated.setdefault("snapshots", {})
+    for d, snap in list(updated["snapshots"].items()):
+        if d != snapshot_date and snap.get("label") == "今日":
+            snap["label"] = ""
+    updated["snapshots"][snapshot_date] = {"label": "今日", "models": snap_models}
+    return updated
+
+
 def parse_quota_value(value: str) -> int | None:
-    """Parse a quota cell. '-' / '无限制' means unlimited / not applicable."""
+    """Parse a quota cell. '-' / 无限制 means unlimited / not applicable."""
     cleaned = value.replace(",", "").replace("，", "").replace("\u00a0", "").strip()
     if cleaned in ("-", "–", "—", "无限制", "无限", "不限", "∞"):
         return None
@@ -1008,6 +1157,7 @@ def main() -> None:
     output_quota_path = output_dir / "data" / "snapshots" / QUOTA_PATH.name
     output_aa_path = output_dir / "data" / "snapshots" / AA_PATH.name
     output_lmarena_path = output_dir / "data" / "snapshots" / LMARENA_PATH.name
+    output_aihot_path = output_dir / "data" / "snapshots" / AIHOT_PATH.name
     output_html_path = output_dir / "index.html"
 
     if args.lmarena_history:
@@ -1051,9 +1201,16 @@ def main() -> None:
     lmarena_doc = json.loads(LMARENA_PATH.read_text(encoding="utf-8"))
     updated_lmarena = update_lmarena_doc(lmarena_doc, quota_rows, lmarena_overall, args.date)
     atomic_write_json(output_lmarena_path, updated_lmarena)
+    print(f"Fetching {AIHOT_URL} (综合榜，网页解析)")
+    aihot_board, aihot_meta = fetch_aihot_board()
+    print(f"Parsed {len(aihot_board)} aihot rows (updated {aihot_meta.get('board_updated_at')})")
+    aihot_doc = json.loads(AIHOT_PATH.read_text(encoding="utf-8")) if AIHOT_PATH.exists() else {}
+    updated_aihot = update_aihot_doc(aihot_doc, quota_rows, aihot_board, args.date, aihot_meta)
+    atomic_write_json(output_aihot_path, updated_aihot)
     print(f"Updated {output_quota_path}")
     print(f"Updated {output_aa_path}")
     print(f"Updated {output_lmarena_path}")
+    print(f"Updated {output_aihot_path}")
 
 
     if not args.no_generate:
@@ -1065,6 +1222,7 @@ def main() -> None:
             "--quota", str(output_quota_path),
             "--aa", str(output_aa_path),
             "--lmarena", str(output_lmarena_path),
+            "--aihot", str(output_aihot_path),
             "--output", str(output_html_path),
         ], cwd=ROOT, check=True)
 

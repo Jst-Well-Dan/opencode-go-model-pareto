@@ -24,6 +24,7 @@ TEMPLATE = ROOT / "template" / "opencode-go-model-pareto.template.html"
 OC_QUOTA = ROOT / "data" / "snapshots" / "quota-snapshots.json"
 AA_PATH = ROOT / "data" / "snapshots" / "aa-scores.json"
 LMARENA_PATH = ROOT / "data" / "snapshots" / "lmarena-scores.json"
+AIHOT_PATH = ROOT / "data" / "snapshots" / "aihot-scores.json"
 OUTPUT = ROOT / "index.html"
 
 def _load_json_strict(path: Path, name: str):
@@ -85,7 +86,7 @@ def _log_ticks(lo: float, hi: float) -> list:
     return sorted(set(out))
 
 
-def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_path: Path, domain: str = "legacy", lmarena_path: Path = LMARENA_PATH) -> None:
+def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_path: Path, domain: str = "legacy", lmarena_path: Path = LMARENA_PATH, aihot_path: Path = AIHOT_PATH) -> None:
     tpl = template_path.read_text(encoding="utf-8")
     oc_doc = load(oc_quota_path)
     aa_doc = load(aa_path)
@@ -94,6 +95,11 @@ def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_pat
         lm_snapshots_raw = lm_doc.get("snapshots") if isinstance(lm_doc, dict) else None
     except Exception:
         lm_snapshots_raw = None
+    try:
+        aihot_doc = load(aihot_path)
+        aihot_snapshots_raw = aihot_doc.get("snapshots") if isinstance(aihot_doc, dict) else None
+    except Exception:
+        aihot_snapshots_raw = None
     aa_snapshots = aa_doc.get("snapshots")
     if not isinstance(aa_snapshots, dict):
         legacy_date = str(aa_doc.get("last_fetched_at", ""))[:10]
@@ -114,6 +120,16 @@ def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_pat
         if not candidates:
             return []  # LMArena 快照起始日之前的日期不回填当日分，避免误导
         return lm_snapshots_raw[max(candidates)].get("models", [])
+
+    aihot_dates = sorted(aihot_snapshots_raw) if isinstance(aihot_snapshots_raw, dict) and aihot_snapshots_raw else []
+
+    def aihot_rows_for_date(day):
+        if not aihot_dates:
+            return []
+        candidates = [d for d in aihot_dates if d <= day]
+        if not candidates:
+            return []  # AIHOT 快照起始日之前的日期不回填，避免误导
+        return aihot_snapshots_raw[max(candidates)].get("models", [])
 
     style_m = re.search(r"<style>(.*?)</style>", tpl, re.S)
     STYLE = style_m.group(1) if style_m else ""
@@ -177,6 +193,10 @@ def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_pat
         aa_meta_snapshots = {}
         lm_y_ranges = {}
         lm_y_ticks_snapshots = {}
+        aihot_score_snapshots = {}
+        aihot_meta_snapshots = {}
+        aihot_y_ranges = {}
+        aihot_y_ticks_snapshots = {}
         for d in dates:
             by = score_rows(d)
             values = [by.get(m, {}).get("intelligence") for m in model_order]
@@ -196,9 +216,23 @@ def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_pat
                 lm_lo, lm_hi = -0.2, 0.15
             lm_y_ranges[d] = [lm_lo, lm_hi]
             lm_y_ticks_snapshots[d] = lm_ticks(lm_lo, lm_hi)
+            aihot_by = {r["model"]: r for r in aihot_rows_for_date(d)}
+            aihot_values = [aihot_by.get(m, {}).get("score") for m in model_order]
+            aihot_score_snapshots[d] = aihot_values
+            aihot_meta_snapshots[d] = [
+                {"stale": bool(aihot_by.get(m, {}).get("stale")), "asof": aihot_by.get(m, {}).get("asof"),
+                 "coverage": aihot_by.get(m, {}).get("coverage"), "rank": aihot_by.get(m, {}).get("rank")}
+                for m in model_order
+            ]
+            aihot_ints = [v for v in aihot_values if isinstance(v, (int, float))]
+            a_lo, a_hi = axis_range(aihot_ints) if aihot_ints else (50, 80)
+            aihot_y_ranges[d] = [a_lo, a_hi]
+            aihot_y_ticks_snapshots[d] = list(range(a_lo, a_hi + 1, 4))
         y_min, y_max = y_ranges[dates[0]]
         lm_y_min, lm_y_max = lm_y_ranges[dates[0]]
         lm_y_ticks = lm_y_ticks_snapshots[dates[0]]
+        aihot_y_min, aihot_y_max = aihot_y_ranges[dates[0]]
+        aihot_y_ticks = aihot_y_ticks_snapshots[dates[0]]
         latest_scores = score_rows(dates[0])
         n_stale = sum(1 for r in latest_scores.values() if r.get("stale") and isinstance(r.get("intelligence"), (int, float)))
         n_fresh = sum(1 for r in latest_scores.values() if isinstance(r.get("intelligence"), (int, float)) and not r.get("stale"))
@@ -261,7 +295,10 @@ def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_pat
                 opts.append(f'<option value="{html.escape(d, quote=True)}"{sel}>{html.escape(d + suffix)}</option>')
             return "".join(opts)
 
-        return dict(y_min=y_min, y_max=y_max, base_data=base_data, quota_snapshots=quota_snapshots, score_snapshots=score_snapshots, y_ranges=y_ranges, y_ticks_snapshots=y_ticks_snapshots, dates=dates, norm_ref=norm_ref, y_ticks=y_ticks, date_opts=make_opts(), x_config=x_config, lm_score_snapshots=lm_score_snapshots, lm_y_ranges=lm_y_ranges, lm_y_ticks_snapshots=lm_y_ticks_snapshots, lm_y_min=lm_y_min, lm_y_max=lm_y_max, lm_y_ticks=lm_y_ticks, lm_available=bool(lm_dates), lm_meta_snapshots=lm_meta_snapshots, aa_meta_snapshots=aa_meta_snapshots, aa_note=aa_note)
+        return dict(y_min=y_min, y_max=y_max, base_data=base_data, quota_snapshots=quota_snapshots, score_snapshots=score_snapshots, y_ranges=y_ranges, y_ticks_snapshots=y_ticks_snapshots, dates=dates, norm_ref=norm_ref, y_ticks=y_ticks, date_opts=make_opts(), x_config=x_config, lm_score_snapshots=lm_score_snapshots, lm_y_ranges=lm_y_ranges, lm_y_ticks_snapshots=lm_y_ticks_snapshots, lm_y_min=lm_y_min, lm_y_max=lm_y_max, lm_y_ticks=lm_y_ticks, lm_available=bool(lm_dates), lm_meta_snapshots=lm_meta_snapshots, aa_meta_snapshots=aa_meta_snapshots, aa_note=aa_note,
+                     aihot_score_snapshots=aihot_score_snapshots, aihot_meta_snapshots=aihot_meta_snapshots, aihot_y_ranges=aihot_y_ranges,
+                     aihot_y_ticks_snapshots=aihot_y_ticks_snapshots, aihot_y_min=aihot_y_min, aihot_y_max=aihot_y_max,
+                     aihot_y_ticks=aihot_y_ticks, aihot_available=bool(aihot_dates))
 
     oc_payload = build_oc_payload()
 
@@ -349,7 +386,7 @@ def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_pat
 <!-- OC Pareto -->
 <section id="tab-oc">
 <section class="panel" aria-labelledby="chart-title-oc">
-<div class="chart-head"><div><div class="chart-title" id="chart-title-oc">模型效能分布</div></div><div class="controls"><div class="control-group"><label for="dateSelect-oc">数据日期</label><select id="dateSelect-oc">{oc_opts}</select></div><div class="control-group"><span>智力指标</span><button id="metricAA-oc" class="active" type="button" aria-pressed="true">AA智力</button><button id="metricLM-oc" type="button" aria-pressed="false">LMArena</button></div></div></div>
+<div class="chart-head"><div><div class="chart-title" id="chart-title-oc">模型效能分布</div></div><div class="controls"><div class="control-group"><label for="dateSelect-oc">数据日期</label><select id="dateSelect-oc">{oc_opts}</select></div><div class="control-group"><span>智力指标</span><button id="metricAA-oc" class="active" type="button" aria-pressed="true">AA智力</button><button id="metricLM-oc" type="button" aria-pressed="false">LMArena</button><button id="metricAIHOT-oc" type="button" aria-pressed="false">AIHOT</button></div></div></div>
 <div class="timeline" id="timeline-oc"><button id="prevBtn-oc" class="pill" type="button">◀</button><input type="range" id="dateRange-oc"><button id="nextBtn-oc" class="pill" type="button">▶</button><span class="date-chip" id="dateChip-oc"></span></div>
 <div class="legend"><span class="legend-key"><i class="ring-key"></i><i class="line-key"></i>橙色：帕累托最优</span><span class="legend-key"><i class="badge-key multi">M</i>多模态</span><span class="legend-key"><i class="badge-key text">T</i>纯文字</span><span class="legend-key"><i class="badge-key unknown">?</i>模态未知（AA 未收录）</span><span class="legend-key"><i class="ref-key"></i>虚线头像：无当前指标分</span><span class="legend-key"><i class="ref-key"></i>灰虚线圈：指标已停更的旧分（仅参考，不参与最优）</span></div>
 <details class="filter-panel" id="filterPanel-oc"><summary class="filter-summary" id="filterSummary-oc"><span class="bar-accent"></span><span class="bar-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 3h12l-4.5 5.2V12l-3 1.5V8.2L2 3z"/></svg></span><b>模型筛选</b><span class="bar-sub">按公司分组</span><span class="pill" id="filterCount-oc"></span><span class="sum-chev">▾</span></summary><div class="filter-inner"><div class="toolbar"><button id="filterAll-oc" type="button">全选</button><button id="filterReset-oc" type="button">重置</button><input class="search" id="filterSearch-oc" placeholder="搜索模型，如 muse…"><span class="count" id="filterCountInner-oc"></span></div><div class="groups" id="filterGroups-oc"></div></div></details>
@@ -359,7 +396,7 @@ def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_pat
 <section class="panel summary"><h2>帕累托最优解（按成本由低到高）</h2><div class="cards" id="cards-oc"></div></section>
 <aside class="panel missing" id="missingPanel-oc"><h2>缺失数据</h2><div class="missing-row" id="missingRow-oc"></div><p id="missingNote-oc">AA Index 截至 <strong id="missingDate-oc"></strong> 无匹配，智力指数为空（相对成本见横轴虚线头像）；指标补齐后方可判断是否最优。</p></aside>
 </div>
-<p class="foot">数据：<a class="src-link" href="https://opencode.ai/v2/docs/console/go/" target="_blank" rel="noopener">Go 用量快照</a> · <a class="src-link" href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noopener">AA Index</a> · <a class="src-link" href="https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset" target="_blank" rel="noopener">LMArena</a>，{foot_basis}（当前 <span id="footRef-oc"></span>）。{oc_payload['aa_note']}图标已嵌入，离线可用。</p>
+<p class="foot">数据：<a class="src-link" href="https://opencode.ai/v2/docs/console/go/" target="_blank" rel="noopener">Go 用量快照</a> · <a class="src-link" href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noopener">AA Index</a> · <a class="src-link" href="https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset" target="_blank" rel="noopener">LMArena</a> · <a class="src-link" href="https://aihot.news/leaderboard" target="_blank" rel="noopener" title="AIHOT 模型榜（第三方评测综合分，仅前 30 名）">AIHOT</a>，{foot_basis}（当前 <span id="footRef-oc"></span>）。{oc_payload['aa_note']}图标已嵌入，离线可用。</p>
 </section>
 
 
@@ -369,18 +406,24 @@ def generate(template_path: Path, oc_quota_path: Path, aa_path: Path, output_pat
 """
 
     PARETO_FACTORY = """
-function createParetoChart(prefix, baseData, quotaSnapshots, scoreSnapshots, yRanges, yTicksSnapshots, yMin, yMax, normalizationReference, yTicks, xConfig, lmScoreSnapshots, lmYRanges, lmYTicksSnapshots, lmYMin, lmYMax, lmYTicks, lmAvailable, lmMetaSnapshots, aaMetaSnapshots){
+function createParetoChart(prefix, baseData, quotaSnapshots, scoreSnapshots, yRanges, yTicksSnapshots, yMin, yMax, normalizationReference, yTicks, xConfig, lmScoreSnapshots, lmYRanges, lmYTicksSnapshots, lmYMin, lmYMax, lmYTicks, lmAvailable, lmMetaSnapshots, aaMetaSnapshots, aihotScoreSnapshots, aihotYRanges, aihotYTicksSnapshots, aihotYMin, aihotYMax, aihotYTicks, aihotAvailable, aihotMetaSnapshots){
   const svg=document.getElementById("chart-"+prefix), tip=document.getElementById("tooltip-"+prefix);
   const wrap=document.getElementById("chartWrap-"+prefix);
   const dsSelect=document.getElementById("dateSelect-"+prefix), dsRange=document.getElementById("dateRange-"+prefix);
   const prevBtn=document.getElementById("prevBtn-"+prefix), nextBtn=document.getElementById("nextBtn-"+prefix), chip=document.getElementById("dateChip-"+prefix);
   const cardsEl=document.getElementById("cards-"+prefix), missingPanel=document.getElementById("missingPanel-"+prefix), missingRow=document.getElementById("missingRow-"+prefix), missingDateEl=document.getElementById("missingDate-"+prefix), footRef=document.getElementById("footRef-"+prefix);
-  const metricAA=document.getElementById("metricAA-"+prefix), metricLM=document.getElementById("metricLM-"+prefix);
+  const metricAA=document.getElementById("metricAA-"+prefix), metricLM=document.getElementById("metricLM-"+prefix), metricAIHOT=document.getElementById("metricAIHOT-"+prefix);
   const missingNote=document.getElementById("missingNote-"+prefix);
   let metric="aa";
-  const metricLabel=()=>metric==="aa"?"AA Intelligence Index":"LMArena agent score";
-  const metricShort=()=>metric==="aa"?"智力指数":"Agent分";
-  const fmtV=v=>metric==="aa"?v.toFixed(1):(v>0?"+":"")+v.toFixed(4);
+  const METRIC_CFG={
+    aa:{label:"AA Intelligence Index",short:"智力指数",fmt:v=>v.toFixed(1)},
+    lm:{label:"LMArena agent score",short:"Agent分",fmt:v=>(v>0?"+":"")+v.toFixed(4)},
+    aihot:{label:"AIHOT 评分（综合榜）",short:"AIHOT 分",fmt:v=>v.toFixed(1)}
+  };
+  const metricCfg=()=>METRIC_CFG[metric]||METRIC_CFG.aa;
+  const metricLabel=()=>metricCfg().label;
+  const metricShort=()=>metricCfg().short;
+  const fmtV=v=>metricCfg().fmt(v);
   let activeYMin=yMin, activeYMax=yMax, activeYTicks=yTicks, activeXMin=1, activeXMax=2, activeXTicks=[];
   const modalityMeta={"多模态":{mark:"M",cls:"multi"},"纯文字":{mark:"T",cls:"text"},"未知":{mark:"?",cls:"unknown"}};
   const icons=""" + ICONS_OBJ + """;
@@ -389,24 +432,31 @@ function createParetoChart(prefix, baseData, quotaSnapshots, scoreSnapshots, yRa
   function y(v){return H-M.b-(v-activeYMin)/(activeYMax-activeYMin)*(H-M.t-M.b);}
   function node(tag,attrs={},text=""){const el=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));if(text)el.textContent=text;return el;}
   function buildDataset(scoreSnap){return Object.fromEntries(Object.keys(quotaSnapshots).map(d=>[d,quotaSnapshots[d].map((q,i)=>({...baseData[i],intelligence:scoreSnap[d][i],requests:q.requests,weekly:q.weekly,monthly:q.monthly,note:q.note||null,cost:q.requests?xConfig.refs[d]/q.requests:null,pareto:null,absent:!!q.absent}))]));}
-  const datasetsAA=buildDataset(scoreSnapshots), datasetsLM=buildDataset(lmScoreSnapshots||{});
+  const datasetsAA=buildDataset(scoreSnapshots), datasetsLM=buildDataset(lmScoreSnapshots||{}), datasetsAIHOT=buildDataset(aihotScoreSnapshots||{});
   Object.keys(datasetsLM).forEach(d=>{datasetsLM[d].forEach((pt,i)=>{const m=(lmMetaSnapshots&&lmMetaSnapshots[d]&&lmMetaSnapshots[d][i])||{};pt.stale=!!m.stale;pt.asof=m.asof||null;pt.staleSrc='lm';});});
   Object.keys(datasetsAA).forEach(d=>{datasetsAA[d].forEach((pt,i)=>{const m=(aaMetaSnapshots&&aaMetaSnapshots[d]&&aaMetaSnapshots[d][i])||{};pt.stale=!!m.stale;pt.asof=m.asof||null;pt.staleSrc='aa';});});
-  const activeDatasets=()=>metric==="aa"?datasetsAA:datasetsLM;
-  const activeYRanges=()=>metric==="aa"?yRanges:(lmYRanges||yRanges);
-  const activeYTicksSnap=()=>metric==="aa"?yTicksSnapshots:(lmYTicksSnapshots||yTicksSnapshots);
+  Object.keys(datasetsAIHOT).forEach(d=>{datasetsAIHOT[d].forEach((pt,i)=>{const m=(aihotMetaSnapshots&&aihotMetaSnapshots[d]&&aihotMetaSnapshots[d][i])||{};pt.stale=!!m.stale;pt.asof=m.asof||null;pt.staleSrc='aihot';pt.coverage=m.coverage==null?null:m.coverage;pt.rank=m.rank==null?null:m.rank;});});
+  const activeDatasets=()=>metric==="aa"?datasetsAA:metric==="lm"?datasetsLM:datasetsAIHOT;
+  const activeYRanges=()=>metric==="aa"?yRanges:metric==="lm"?(lmYRanges||yRanges):(aihotYRanges||yRanges);
+  const activeYTicksSnap=()=>metric==="aa"?yTicksSnapshots:metric==="lm"?(lmYTicksSnapshots||yTicksSnapshots):(aihotYTicksSnapshots||yTicksSnapshots);
   const allDates=Object.keys(quotaSnapshots).sort(); let data=[],plotted=[],frontier=[],activeDate=allDates[allDates.length-1];
   function setParetoFlags(){plotted=data.filter(d=>d.intelligence!==null&&d.cost!==null&&!excluded.has(d.model)&&!d.stale);plotted.forEach(d=>{d.pareto=!plotted.some(o=>o!==d&&o.intelligence>=d.intelligence&&o.cost<=d.cost&&(o.intelligence>d.intelligence||o.cost<d.cost))});frontier=plotted.filter(d=>d.pareto).sort((a,b)=>a.cost-b.cost);}
   function syncTimeline(date){const idx=allDates.indexOf(date);if(dsRange){dsRange.min=0;dsRange.max=Math.max(0,allDates.length-1);dsRange.value=idx}if(chip)chip.textContent=date+(date===allDates[allDates.length-1]?" · 今日":"");if(dsSelect)dsSelect.value=date;if(prevBtn)prevBtn.disabled=idx<=0;if(nextBtn)nextBtn.disabled=idx>=allDates.length-1;}
-  function showTip(d){const s=svg.getBoundingClientRect().width/W;tip.innerHTML=`<strong>${d.model}</strong><span style="display:block;color:#cbd5e1;font-size:.72rem">${activeDate} · ${metricLabel()}</span>${d.pareto?'<span style="color:#fdba74;font-weight:700">帕累托最优</span><br>':''}${d.stale?`<span style="color:#fbbf24;font-weight:700">${d.staleSrc==='aa'?'AA 免费档已停供该模型':'榜单缺项'}，最后已知分值截至 ${d.asof}，仅供参考、不参与最优</span><br>`:''}模态：${d.modality}${d.note?`<br>备注：${d.note}`:""}<br>${metricShort()}：${fmtV(d.intelligence)}<br>相对成本：${d.cost.toFixed(3)}<br>配额：${d.requests.toLocaleString()} / 5 小时<br>每周：${d.weekly.toLocaleString()}<br>每月：${d.monthly.toLocaleString()}`;tip.style.left=`${Math.min(Math.max(x(d.cost)*s,125),wrap.clientWidth-125)}px`;tip.style.top=`${y(d.intelligence)*s}px`;tip.classList.toggle("tip-below",y(d.intelligence)*s<240);tip.classList.add("on");}
-  function setMetric(m){if(m==="lm"&&!lmAvailable)return;metric=m;[metricAA,metricLM].forEach(b=>{if(!b)return;const on=(b===metricAA)===(m==="aa");b.classList.toggle("active",on);b.setAttribute("aria-pressed",String(on))});if(missingNote)missingNote.innerHTML=m==="aa"?`AA Index 截至 <strong>${activeDate}</strong> 无匹配，智力指数为空（相对成本见横轴虚线头像）；指标补齐后方可判断是否最优。`:`LMArena Agent 榜单截至 <strong>${activeDate}</strong> 无匹配，评分为空（相对成本见横轴虚线头像）；指标补齐后方可判断是否最优。`;setDataset(activeDate);}
-  if(metricAA)metricAA.addEventListener("click",()=>setMetric("aa"));if(metricLM){if(!lmAvailable){metricLM.disabled=true;metricLM.title="暂无 LMArena 快照";}metricLM.addEventListener("click",()=>setMetric("lm"));}
+  function showTip(d){const s=svg.getBoundingClientRect().width/W;tip.innerHTML=`<strong>${d.model}</strong><span style="display:block;color:#cbd5e1;font-size:.72rem">${activeDate} · ${metricLabel()}</span>${d.pareto?'<span style="color:#fdba74;font-weight:700">帕累托最优</span><br>':''}${d.stale?`<span style="color:#fbbf24;font-weight:700">${d.staleSrc==='aa'?'AA 免费档已停供该模型':d.staleSrc==='aihot'?'AIHOT 榜未收录（仅前 30 名）':'榜单缺项'}，最后已知分值截至 ${d.asof}，仅供参考、不参与最优</span><br>`:''}模态：${d.modality}${d.note?`<br>备注：${d.note}`:""}<br>${metricShort()}：${fmtV(d.intelligence)}${metric==='aihot'&&d.coverage!=null?`（评测覆盖 ${d.coverage}%${d.rank?` · 榜第 ${d.rank}`:''}）`:''}<br>相对成本：${d.cost.toFixed(3)}<br>配额：${d.requests.toLocaleString()} / 5 小时<br>每周：${d.weekly.toLocaleString()}<br>每月：${d.monthly.toLocaleString()}`;tip.style.left=`${Math.min(Math.max(x(d.cost)*s,125),wrap.clientWidth-125)}px`;tip.style.top=`${y(d.intelligence)*s}px`;tip.classList.toggle("tip-below",y(d.intelligence)*s<240);tip.classList.add("on");}
+  const METRIC_BTNS=[[metricAA,"aa"],[metricLM,"lm"],[metricAIHOT,"aihot"]];
+  const metricNote=()=>metric==="aa"
+    ?`AA Index 截至 <strong>${activeDate}</strong> 无匹配，智力指数为空（相对成本见横轴虚线头像）；指标补齐后方可判断是否最优。`
+    :metric==="lm"
+    ?`LMArena Agent 榜单截至 <strong>${activeDate}</strong> 无匹配，评分为空（相对成本见横轴虚线头像）；指标补齐后方可判断是否最优。`
+    :`AIHOT 综合榜只收录前 30 名，截至 <strong>${activeDate}</strong> 未收录的模型评分为空（相对成本见横轴虚线头像）；指标补齐后方可判断是否最优。`;
+  function setMetric(m){if(m==="lm"&&!lmAvailable)return;if(m==="aihot"&&!aihotAvailable)return;metric=m;METRIC_BTNS.forEach(([b,key])=>{if(!b)return;const on=key===m;b.classList.toggle("active",on);b.setAttribute("aria-pressed",String(on))});if(missingNote)missingNote.innerHTML=metricNote();setDataset(activeDate);}
+  if(metricAA)metricAA.addEventListener("click",()=>setMetric("aa"));if(metricLM){if(!lmAvailable){metricLM.disabled=true;metricLM.title="暂无 LMArena 快照";}metricLM.addEventListener("click",()=>setMetric("lm"));}if(metricAIHOT){if(!aihotAvailable){metricAIHOT.disabled=true;metricAIHOT.title="暂无 AIHOT 榜单快照";}metricAIHOT.addEventListener("click",()=>setMetric("aihot"));}
   function showAxisTip(d,cx,cy){const s=svg.getBoundingClientRect().width/W;const num=v=>v==null?"—":v.toLocaleString();tip.innerHTML=`<strong>${d.model}</strong><span style="display:block;color:#cbd5e1;font-size:.72rem">${activeDate} · ${metricLabel()}</span><span style="color:#fbbf24;font-weight:700">无当前指标分（横轴仅示意相对成本）</span><br>模态：${d.modality}${d.note?`<br>备注：${d.note}`:""}<br>相对成本：${d.cost==null?"—":d.cost.toFixed(3)}<br>配额：${d.requests==null?"免费 · 不限":d.requests.toLocaleString()+" / 5 小时"}<br>每周：${num(d.weekly)}<br>每月：${num(d.monthly)}`;tip.style.left=`${Math.min(Math.max(cx*s,125),wrap.clientWidth-125)}px`;tip.style.top=`${cy*s}px`;tip.classList.toggle("tip-below",cy*s<240);tip.classList.add("on");}
   function hideTip(){tip.classList.remove("on");}
   function render(){svg.replaceChildren();svg.append(node("title",{}, metricLabel()+"与相对配额成本"), node("desc",{}, `${plotted.length} 模型，${frontier.length} 帕累托最优`));const defs=node("defs"),mk=node("marker",{id:"arrow-"+prefix,viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:6,markerHeight:6,orient:"auto-start-reverse"});mk.append(node("path",{d:"M 0 0 L 10 5 L 0 10 z",fill:"#0f766e"}));defs.append(mk);svg.append(defs);activeYTicks.forEach(v=>svg.append(node("line",{x1:M.l,y1:y(v),x2:W-M.r,y2:y(v),class:"grid"}),node("text",{x:M.l-12,y:y(v)+4,"text-anchor":"end",class:"tick"},String(v))));const ticks=activeXTicks["log"];ticks.forEach(v=>svg.append(node("line",{x1:x(v),y1:M.t,x2:x(v),y2:H-M.b,class:"grid"}),node("text",{x:x(v),y:H-M.b+24,"text-anchor":"middle",class:"tick"},String(v))));svg.append(node("line",{x1:M.l,y1:H-M.b,x2:W-M.r,y2:H-M.b,class:"axis"}),node("line",{x1:M.l,y1:M.t,x2:M.l,y2:H-M.b,class:"axis"}),node("text",{x:(M.l+W-M.r)/2,y:H-22,"text-anchor":"middle",class:"axis-label"},"相对配额成本（越低越好 · 对数刻度）"),node("text",{x:20,y:(M.t+H-M.b)/2,transform:`rotate(-90 20 ${(M.t+H-M.b)/2})`,"text-anchor":"middle",class:"axis-label"},metricLabel()),node("line",{x1:178,y1:104,x2:111,y2:60,class:"ideal-line"}),node("text",{x:185,y:108,class:"ideal"},"理想方向：左上 ↖"),node("polyline",{points:frontier.map(d=>`${x(d.cost)},${y(d.intelligence)}`).join(" "),class:"optimal-line"}));plotted.filter(d=>!d.pareto).concat(frontier).forEach(d=>{const meta=modalityMeta[d.modality],g=node("g",{class:`point${d.pareto?" optimal":""}`,transform:`translate(${x(d.cost)} ${y(d.intelligence)})`,tabindex:"0"});g.append(node("circle",{r:18,class:"avatar-bg"}),node("image",{href:icons[d.brand],x:-12,y:-12,width:24,height:24,preserveAspectRatio:"xMidYMid meet"}),node("circle",{cx:13,cy:13,r:8,class:`point-badge ${meta.cls}`}),node("text",{x:13,y:13,class:"point-badge-text"},meta.mark));g.addEventListener("pointerenter",()=>showTip(d));g.addEventListener("pointerleave",hideTip);svg.append(g);});data.filter(d=>d.stale&&d.intelligence!==null&&d.cost!==null&&!excluded.has(d.model)).forEach(d=>{const meta=modalityMeta[d.modality],g=node("g",{class:"point stale",transform:`translate(${x(d.cost)} ${y(d.intelligence)})`,tabindex:"0"});g.append(node("circle",{r:18,class:"avatar-bg"}),node("image",{href:icons[d.brand],x:-12,y:-12,width:24,height:24,opacity:.8,preserveAspectRatio:"xMidYMid meet"}),node("circle",{cx:13,cy:13,r:8,class:`point-badge ${meta.cls}`}),node("text",{x:13,y:13,class:"point-badge-text"},meta.mark));g.addEventListener("pointerenter",()=>showTip(d));g.addEventListener("pointerleave",hideTip);svg.append(g);});data.filter(d=>excluded.has(d.model)&&d.intelligence!==null&&d.cost!==null).forEach(d=>{svg.append(node("circle",{cx:x(d.cost),cy:y(d.intelligence),r:5,fill:"none",stroke:"#cbd5e1","stroke-width":1.5,"stroke-dasharray":"3 2"}));});const axisRefs=data.filter(d=>d.intelligence===null&&!d.absent&&!excluded.has(d.model)).map(d=>({d,px:d.cost===null?M.l:x(d.cost)})).sort((a,b)=>a.px-b.px);let stackLv=0,prevAxisPx=-1e9;axisRefs.forEach(({d,px})=>{if(px-prevAxisPx<36){stackLv++;}else{stackLv=0;}prevAxisPx=px;const py=(H-M.b)-stackLv*30,g=node("g",{class:"axis-ref",transform:`translate(${px} ${py})`,tabindex:"0"});g.append(node("circle",{r:13,class:"ref-avatar-bg"}),node("image",{href:icons[d.brand],x:-8.5,y:-8.5,width:17,height:17,opacity:.75,preserveAspectRatio:"xMidYMid meet"}));const showAxis=()=>showAxisTip(d,px,py);g.addEventListener("pointerenter",showAxis);g.addEventListener("pointerleave",hideTip);g.addEventListener("focus",showAxis);g.addEventListener("blur",hideTip);svg.append(g);});}
   function avatarMarkup(d,cls="card-avatar"){const m=modalityMeta[d.modality];return `<span class="avatar-wrap"><img class="${cls}" src="${icons[d.brand]}" alt=""><i class="modality-badge ${m.cls}">${m.mark}</i></span>`;}
   function renderSummary(){if(!cardsEl)return;updateFilterSummary();cardsEl.innerHTML=frontier.map((d,i)=>`<div class="card"><div>${avatarMarkup(d)}</div><div><strong>${i+1}. ${d.model}</strong><span>${d.modality} · 成本 ${d.cost.toFixed(3)} · ${metricShort()} ${fmtV(d.intelligence)}</span></div></div>`).join("");const miss=data.filter(d=>d.intelligence===null&&!d.absent&&!excluded.has(d.model));if(miss.length){missingPanel.style.display="";missingRow.innerHTML=miss.map(d=>`<div class="missing-item">${avatarMarkup(d,"missing-avatar")}<span><span class="model">${d.model}</span><br>${d.modality} · ${d.requests?d.requests.toLocaleString()+" / 5 小时":"免费 · 不限"}</span></div>`).join("");if(missingDateEl)missingDateEl.textContent=activeDate;}else missingPanel.style.display="none"; if(footRef){if(xConfig.basis==="adaptive"){const top=data.filter(d=>d.requests).sort((a,b)=>b.requests-a.requests)[0];footRef.textContent=top?`${top.model} ${top.requests.toLocaleString()} / 5 小时`:"—";}else{footRef.textContent=`${normalizationReference.model} ${normalizationReference.requests_per_5h.toLocaleString()} / 5 小时`;}}}
-  function setDataset(date){activeDate=date;const yr=activeYRanges()[date]||[yMin,yMax];activeYMin=yr[0];activeYMax=yr[1];activeYTicks=activeYTicksSnap()[date]||yTicks;activeXMin=xConfig.domains[date][0];activeXMax=xConfig.domains[date][1];activeXTicks=xConfig.ticks[date];data=(activeDatasets()[date]||[]).map(d=>({...d}));setParetoFlags();syncTimeline(date);renderSummary();hideTip();render();}
+  function setDataset(date){activeDate=date;if(missingNote)missingNote.innerHTML=metricNote();const yr=activeYRanges()[date]||[yMin,yMax];activeYMin=yr[0];activeYMax=yr[1];activeYTicks=activeYTicksSnap()[date]||yTicks;activeXMin=xConfig.domains[date][0];activeXMax=xConfig.domains[date][1];activeXTicks=xConfig.ticks[date];data=(activeDatasets()[date]||[]).map(d=>({...d}));setParetoFlags();syncTimeline(date);renderSummary();hideTip();render();}
   if(dsSelect)dsSelect.addEventListener("change",e=>setDataset(e.target.value));
   if(dsRange)dsRange.addEventListener("input",e=>setDataset(allDates[Number(e.target.value)]));
   if(prevBtn)prevBtn.addEventListener("click",()=>{const i=allDates.indexOf(activeDate);if(i>0)setDataset(allDates[i-1])});
@@ -464,7 +514,7 @@ function createParetoChart(prefix, baseData, quotaSnapshots, scoreSnapshots, yRa
         "</body>",
         f"""<script>
 {PARETO_FACTORY}
-createParetoChart("oc", {json.dumps(oc_payload['base_data'], ensure_ascii=False)}, {json.dumps(oc_payload['quota_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['score_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['y_ranges'], ensure_ascii=False)}, {json.dumps(oc_payload['y_ticks_snapshots'], ensure_ascii=False)}, {oc_payload['y_min']}, {oc_payload['y_max']}, {json.dumps(oc_payload['norm_ref'], ensure_ascii=False)}, {json.dumps(oc_payload['y_ticks'])}, {json.dumps(oc_payload['x_config'], ensure_ascii=False)}, {json.dumps(oc_payload['lm_score_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['lm_y_ranges'], ensure_ascii=False)}, {json.dumps(oc_payload['lm_y_ticks_snapshots'], ensure_ascii=False)}, {oc_payload['lm_y_min']}, {oc_payload['lm_y_max']}, {json.dumps(oc_payload['lm_y_ticks'])}, {str(oc_payload['lm_available']).lower()}, {json.dumps(oc_payload['lm_meta_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['aa_meta_snapshots'], ensure_ascii=False)});
+createParetoChart("oc", {json.dumps(oc_payload['base_data'], ensure_ascii=False)}, {json.dumps(oc_payload['quota_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['score_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['y_ranges'], ensure_ascii=False)}, {json.dumps(oc_payload['y_ticks_snapshots'], ensure_ascii=False)}, {oc_payload['y_min']}, {oc_payload['y_max']}, {json.dumps(oc_payload['norm_ref'], ensure_ascii=False)}, {json.dumps(oc_payload['y_ticks'])}, {json.dumps(oc_payload['x_config'], ensure_ascii=False)}, {json.dumps(oc_payload['lm_score_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['lm_y_ranges'], ensure_ascii=False)}, {json.dumps(oc_payload['lm_y_ticks_snapshots'], ensure_ascii=False)}, {oc_payload['lm_y_min']}, {oc_payload['lm_y_max']}, {json.dumps(oc_payload['lm_y_ticks'])}, {str(oc_payload['lm_available']).lower()}, {json.dumps(oc_payload['lm_meta_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['aa_meta_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['aihot_score_snapshots'], ensure_ascii=False)}, {json.dumps(oc_payload['aihot_y_ranges'], ensure_ascii=False)}, {json.dumps(oc_payload['aihot_y_ticks_snapshots'], ensure_ascii=False)}, {oc_payload['aihot_y_min']}, {oc_payload['aihot_y_max']}, {json.dumps(oc_payload['aihot_y_ticks'])}, {str(oc_payload['aihot_available']).lower()}, {json.dumps(oc_payload['aihot_meta_snapshots'], ensure_ascii=False)});
 </script>
 </body>""",
         1,
@@ -480,11 +530,12 @@ def main() -> None:
     parser.add_argument("--quota", type=Path, default=OC_QUOTA, help="OpenCode Go quota snapshots JSON")
     parser.add_argument("--aa", type=Path, default=AA_PATH, help="AA scores JSON")
     parser.add_argument("--lmarena", type=Path, default=LMARENA_PATH, help="LMArena scores JSON")
+    parser.add_argument("--aihot", type=Path, default=AIHOT_PATH, help="AIHOT leaderboard scores JSON")
     parser.add_argument("--output", type=Path, default=OUTPUT, help="output HTML path")
     parser.add_argument("--all", action="store_true", help="alias for default behavior (generate index.html)")
     parser.add_argument("--domain", choices=["legacy", "pinned", "adaptive"], default="legacy", help="横轴方案：legacy=历史行为；pinned=固定锚+全局定义域；adaptive=逐日独立归一")
     args = parser.parse_args()
-    generate(args.template, args.quota, args.aa, args.output, args.domain, args.lmarena)
+    generate(args.template, args.quota, args.aa, args.output, args.domain, args.lmarena, args.aihot)
 
 
 if __name__ == "__main__":

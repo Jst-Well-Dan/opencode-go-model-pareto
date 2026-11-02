@@ -53,7 +53,9 @@ python scripts/generate_rank_change.py
 
 数据来源：
 - **OpenCode Go 配额**：https://opencode.ai/v2/docs/console/go/
-- **AA 智力评分**：https://aihot.virxact.com/leaderboard/methodology（镜像，免 Key；官网 `api/v2/data/llms/models` 为 Pro 付费已不再尝试）
+- **AA 智力评分**：https://artificialanalysis.ai/api/v2/data/llms/models（官方免费 Key，需 `ARTIFICIAL_ANALYSIS_API_KEY`）
+- **LMArena Agent 分**：https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=agent
+- **AIHOT 评分（综合榜）**：https://aihot.news/leaderboard（第三方评测加权：编程 38%、科研 19%、专业办公 19%、知识问答 14%、真人盲选 10%。官方暂无榜单 API，本项目解析服务端渲染表格，只展示前 30 名内的分数；个人非商业引用，页脚保留回链）
 - **模态与图标**：https://artificialanalysis.ai/models/<slug>（`Input modality` → `Supports: text / text and image`）及 https://artificialanalysis.ai/img/logos/<slug>_small.svg（如 `LongCat-2.0` 已替换为官方绿猫 Logo）
 
 常用参数：
@@ -87,6 +89,7 @@ python scripts/generate.py --domain adaptive --output compare-adaptive.html  # �
 - **空配额/免费档**：线上配额为 `-` 的模型（如免费档 `Ox Alpha Free`）标记为 `cost: null`，不参与帕累托计算，在横轴最左端以虚线头像锚定展示（`免费 · 不限`）。
 - **缺分模型**：有配额但暂无 AA 评测分的模型以虚线头像标在其相对成本位置，并在缺失信息面板中以等宽卡片展示。
 - **AA 免费档停供分值**：AA 官方免费 Key 自 2026-10-28 之后只覆盖各家当前主力代（约 90/720 个模型带 `intelligence index`），上一代模型不再返回分值。`update_documents()` 不再因“已知模型缺分”整体抛错，而是保留最后已知分值并写入 `stale: true` + `asof`（最后确认日期），前端以灰虚线圈展示、悬浮提示标明「AA 免费档已停供该模型，最后已知分值截至 …」，且**不参与帕累托计算**（新旧口径不可混算）。只有当接口返回的分值数量低于 `AA_MIN_SCORED_MODELS`（默认 20）时才视为接口异常、中止本次更新。
+- **AIHOT 榜只收前 30 名**：`update_aihot_doc()` 对未上榜模型沿用最后已知分（`stale: true` + `asof`，≤60 天），超出或从未上榜则记 `null`（横轴虚线头像 + 缺失面板）；模型名与榜单 slug 的差异在 `data/registry/aihot-alias.json` 里配，缺省走归一化匹配（忽略大小写/连字符，自动去掉 `0902`、`1017` 这类检查点后缀）。解析行数低于 10 行视为页面改版，直接中止本次 AIHOT 更新而不写坏数据。
 - **历史快照缺失对齐**：以最新快照为基准，结合历史快照并集（`generate_html.py` 自动追加历史独有模型）决定模型全集；当切换到新模型尚未上线的历史日期时，缺失模型自动以 `null`/`absent` 对齐过滤，不会在历史图表中误渲染。已下线模型（如 `Ox Alpha Free` / `Grok 4.5`）仅从最新快照移除，历史快照仍保留，AA 侧保留最后已知分数不报错。
 - **去重快照**：`fetch_data.py:update_documents()` 在 `quota` 与 `AA` 均与最新快照完全一致（含 `AA_SLUG_ALIAS` 回填）时跳过新建当日快照，避免 `2026-08-23/24` 这类重复提交；新增模型或分数变动则仍正常落盘。
 - **促销行解析**：配额表出现 `<del>旧值</del> 新值`（如 `4x` 活动改价）时丢弃删除线旧值、取现行值；模型格的 `<small>` 活动说明（如 `4x · 9 月 20 日结束`）记入行 `note` 字段（模型名保持归一不断历史），悬浮提示中以「备注」展示。
@@ -95,6 +98,7 @@ python scripts/generate.py --domain adaptive --output compare-adaptive.html  # �
 
 ### 3. 时间轴与交互
 - 顶部支持滑块拖动（`◀ 拖动 ▶`）与下拉菜单双控，支持历史配额与 AA 分数快照回溯。
+- 智力指标三档切换：`AA智力`（AA Intelligence Index）/ `LMArena`（Agent 榜真人盲选分）/ `AIHOT`（AIHOT 综合评分，附评测覆盖率与榜内名次）；每档独立纵轴、独立缺失判定，帕累托前沿按当前口径重算。
 - 支持线性刻度与对数刻度（Log Scale）一键平滑切换。
 
 ### 4. 社交分享卡片
