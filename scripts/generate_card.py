@@ -56,14 +56,107 @@ def norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
-def aa_models_for_date(aa: dict, day: str) -> list[dict]:
-    snapshots = aa.get("snapshots")
+
+METRIC_DEFS = {
+    "aa": {
+        "label": "AA 智力", "stat": "AA 智力", "short": "AA", "unit": "AA Intelligence Index",
+        "path": ROOT / "data" / "snapshots" / "aa-scores.json",
+        "field": "intelligence",
+        "fmt": lambda v: f"{v:.1f}",
+        "fmt_axis": lambda v: f"{v:g}",
+        "source": ("AA Index", "https://artificialanalysis.ai/leaderboards/models"),
+        "missing": "AA 分",
+    },
+    "lm": {
+        "label": "Agent 分", "stat": "Agent 分", "short": "LMArena", "unit": "LMArena Agent Score",
+        "path": ROOT / "data" / "snapshots" / "lmarena-scores.json",
+        "field": "rating",
+        "fmt": lambda v: f"{v:+.4f}",
+        "fmt_axis": lambda v: ("0.000" if abs(v) < 5e-4 else f"{v:+.3f}"),
+        "source": ("LMArena", "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"),
+        "missing": "Agent 分",
+    },
+    "aihot": {
+        "label": "AIHOT 评分", "stat": "AIHOT 评分", "short": "AIHOT", "unit": "AIHOT 综合评分",
+        "path": ROOT / "data" / "snapshots" / "aihot-scores.json",
+        "field": "score",
+        "fmt": lambda v: f"{v:.1f}",
+        "fmt_axis": lambda v: f"{v:g}",
+        "source": ("AIHOT 榜", "https://aihot.news/leaderboard"),
+        "missing": "AIHOT 分",
+    },
+}
+METRIC_ORDER = ["aa", "lm", "aihot"]
+
+
+def load_metric_doc(metric: str):
+    path = METRIC_DEFS[metric]["path"]
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def metric_rows(doc: dict, day: str) -> list[dict]:
+    """取 <= day 的最近一期快照模型行（与网页同样的回溯规则）。"""
+    snapshots = doc.get("snapshots")
     if not isinstance(snapshots, dict):
-        return aa.get("models", [])
+        return doc.get("models", [])
     dates = sorted(snapshots)
     candidates = [d for d in dates if d <= day]
     chosen = max(candidates) if candidates else dates[0]
     return snapshots[chosen].get("models", [])
+
+
+def metric_values(doc: dict, day: str, metric: str) -> dict:
+    """model -> {value, stale, asof, coverage, rank}"""
+    out = {}
+    if not doc:
+        return out
+    field = METRIC_DEFS[metric]["field"]
+    for row in metric_rows(doc, day):
+        val = row.get(field)
+        out[row["model"]] = {
+            "value": val if isinstance(val, (int, float)) else None,
+            "stale": bool(row.get("stale")),
+            "asof": row.get("asof"),
+            "coverage": row.get("coverage"),
+            "rank": row.get("rank"),
+        }
+    return out
+
+
+def _nice_step(raw: float) -> float:
+    if raw <= 0:
+        return 1.0
+    exp = math.floor(math.log10(raw))
+    base = raw / (10 ** exp)
+    for m in (1, 2, 2.5, 5, 10):
+        if base <= m:
+            return m * (10 ** exp)
+    return 10 ** (exp + 1)
+
+
+def metric_y_range(values: list[float]):
+    """按当前口径的数值分布算 (ymin, ymax, ticks)，AA / Agent 分 / AIHOT 分都适用。"""
+    lo, hi = min(values), max(values)
+    span = hi - lo
+    if span <= 0:
+        span = max(abs(hi) * 0.1, 1e-3)
+    pad = span * 0.14
+    step = _nice_step((span + 2 * pad) / 5)
+    ymin = math.floor((lo - pad) / step) * step
+    ymax = math.ceil((hi + pad) / step) * step
+    if ymax - ymin < step * 2:
+        ymax = ymin + step * 2
+    ticks, v = [], ymin
+    while v <= ymax + step * 1e-9:
+        ticks.append(round(v, 10))
+        v += step
+    return ymin, ymax, ticks
+
+
+def aa_models_for_date(aa: dict, day: str) -> list[dict]:
+    return metric_rows(aa, day)
 
 
 def load_icons() -> dict:
@@ -114,16 +207,14 @@ def _infer_goat_brand(m: str) -> str:
 
 
 # ---------- SVG helpers ----------
-def build_pareto_svg(pts, frontier, refs, xMax, icons, W=1000, H=420, yMin=None, yMax=None):
+def build_pareto_svg(pts, stale_pts, frontier, refs, xMax, icons, ycfg, axis_label, fmt_value, missing_label, W=1000, H=420):
     M = {"l": 74, "r": 18, "t": 26, "b": 42}
-    values = [p["intel"] for p in pts if isinstance(p.get("intel"), (int, float))]
-    if yMin is None:
-        yMin = max(0, math.floor(min(values) - 2))
-    if yMax is None:
-        yMax = math.ceil(max(values) + 2)
-    if yMax - yMin < 12:
-        yMin = max(0, yMin - 4)
-        yMax += 4
+    yMin, yMax, ticks = ycfg
+    fmt_axis = None
+    for d in METRIC_DEFS.values():
+        if d["unit"] == axis_label:
+            fmt_axis = d["fmt_axis"]
+    fmt_axis = fmt_axis or (lambda v: f"{v:g}")
 
     def x(v):
         return M["l"] + math.log10(v) / math.log10(xMax) * (W - M["l"] - M["r"])
@@ -134,11 +225,9 @@ def build_pareto_svg(pts, frontier, refs, xMax, icons, W=1000, H=420, yMin=None,
     svg_parts = []
     svg_parts.append(f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" role="img">')
     svg_parts.append('<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#0f766e"/></marker></defs>')
-    tick_min = math.ceil(yMin / 4) * 4
-    tick_max = math.floor(yMax / 4) * 4
-    for v in range(tick_min, tick_max + 1, 4):
+    for v in ticks:
         svg_parts.append(f'<line x1="{M["l"]}" y1="{y(v):.1f}" x2="{W-M["r"]}" y2="{y(v):.1f}" stroke="#e8eef5" stroke-width="1"/>')
-        svg_parts.append(f'<text x="{M["l"]-10}" y="{y(v)+4:.1f}" text-anchor="end" font-size="11" fill="#64748b" font-family="system-ui">{v}</text>')
+        svg_parts.append(f'<text x="{M["l"]-10}" y="{y(v)+4:.1f}" text-anchor="end" font-size="11" fill="#64748b" font-family="system-ui">{fmt_axis(v)}</text>')
     for v in [1, 2, 5, 10, 20, 50, 100, 200, 400]:
         if v > xMax * 1.02:
             continue
@@ -147,12 +236,19 @@ def build_pareto_svg(pts, frontier, refs, xMax, icons, W=1000, H=420, yMin=None,
     svg_parts.append(f'<line x1="{M["l"]}" y1="{H-M["b"]}" x2="{W-M["r"]}" y2="{H-M["b"]}" stroke="#94a3b8" stroke-width="1.3"/>')
     svg_parts.append(f'<line x1="{M["l"]}" y1="{M["t"]}" x2="{M["l"]}" y2="{H-M["b"]}" stroke="#94a3b8" stroke-width="1.3"/>')
     svg_parts.append(f'<text x="{(M["l"]+W-M["r"])/2:.0f}" y="{H-6}" text-anchor="middle" font-size="12.5" fill="#334155" font-weight="650">相对配额成本（越低越好 · 对数刻度）</text>')
-    svg_parts.append(f'<text x="16" y="{(M["t"]+H-M["b"])/2:.0f}" transform="rotate(-90 16 {(M["t"]+H-M["b"])/2:.0f})" text-anchor="middle" font-size="12.5" fill="#334155" font-weight="650">AA Intelligence Index</text>')
+    svg_parts.append(f'<text x="16" y="{(M["t"]+H-M["b"])/2:.0f}" transform="rotate(-90 16 {(M["t"]+H-M["b"])/2:.0f})" text-anchor="middle" font-size="12.5" fill="#334155" font-weight="650">{axis_label}</text>')
     svg_parts.append('<line x1="150" y1="78" x2="92" y2="42" stroke="#0f766e" stroke-width="1.6" marker-end="url(#arrow)"/>')
     svg_parts.append('<text x="156" y="82" font-size="11.5" fill="#0f766e" font-weight="700">理想方向：左上 ↖</text>')
     if frontier:
         pts_str = " ".join(f'{x(d["cost"]):.1f},{y(d["intel"]):.1f}' for d in frontier)
         svg_parts.append(f'<polyline points="{pts_str}" fill="none" stroke="#ea580c" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>')
+    for p in stale_pts:
+        cx, cy = x(p["cost"]), y(p["intel"])
+        href = icons.get(p["brand"], icons.get("unknown", ""))
+        svg_parts.append(f'<g transform="translate({cx:.1f} {cy:.1f})" opacity="0.85">')
+        svg_parts.append('<circle r="15" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="4 3"/>')
+        svg_parts.append(f'<image href="{href}" x="-10" y="-10" width="20" height="20" opacity="0.45" preserveAspectRatio="xMidYMid meet"/>')
+        svg_parts.append("</g>")
     ordered = [p for p in pts if not p["pareto"]] + frontier
     for p in ordered:
         cx, cy = x(p["cost"]), y(p["intel"])
@@ -167,13 +263,12 @@ def build_pareto_svg(pts, frontier, refs, xMax, icons, W=1000, H=420, yMin=None,
         svg_parts.append(f'<circle cx="12" cy="12" r="7.2" fill="{badge_color}" stroke="#fff" stroke-width="1.4"/>')
         svg_parts.append(f'<text x="12" y="12" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="800" fill="#fff" font-family="system-ui">{badge_mark}</text>')
         svg_parts.append("</g>")
-    for d in refs:
-        cx = M["l"] if d["free"] else x(d["cost"])
-        label = "免费 · 不限" if d["free"] else f'{d["model"]}（无 AA 分）'
+    for d in [r for r in refs if r["free"]]:
+        cx = M["l"]
         svg_parts.append(f'<g transform="translate({cx:.1f} {H-M["b"]})">')
-        svg_parts.append('<circle r="13" fill="#fff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="3 3"/>')
-        svg_parts.append(f'<image href="{icons.get(d["brand"], icons.get("unknown",""))}" x="-8" y="-8" width="16" height="16" opacity="0.6" preserveAspectRatio="xMidYMid meet"/>')
-        svg_parts.append(f'<text y="-19" text-anchor="middle" font-size="10.5" font-weight="600" fill="#64748b" font-family="system-ui">{label}</text>')
+        svg_parts.append('<circle r="12" fill="#fff" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="3 3"/>')
+        svg_parts.append(f'<image href="{icons.get(d["brand"], icons.get("unknown",""))}" x="-7.5" y="-7.5" width="15" height="15" opacity="0.55" preserveAspectRatio="xMidYMid meet"/>')
+        svg_parts.append('<text x="18" y="4" font-size="10" font-weight="600" fill="#94a3b8" font-family="system-ui">免费 · 不限</text>')
         svg_parts.append("</g>")
     svg_parts.append("</svg>")
     return "\n".join(svg_parts)
@@ -259,42 +354,60 @@ def build_cmp_svg(rows, icons, W=1000, MT=18, MB=42, ROWH=52):
 
 # ---------- card builders ----------
 
-def build_oc_dataset(date, quota, aa):
+def build_oc_dataset(date, quota, metric, mdoc):
     latest = max(quota["snapshots"])
     baseline = quota["snapshots"][latest]["models"]
     tracked = [r["requests_per_5h"] for r in baseline if r["requests_per_5h"]]
     ref = max(tracked)
     x_max = ref / min(tracked)
-    aa_map = {m["model"]: m["intelligence"] for m in aa_models_for_date(aa, date)}
+    mval = metric_values(mdoc, date, metric)
     snap_by = {r["model"]: r for r in quota["snapshots"][date]["models"]}
-    pts = []
+    pts, stale_pts, refs = [], [], []
     for model in [r["model"] for r in baseline]:
         r = snap_by.get(model)
-        if not r or not r["requests_per_5h"] or aa_map.get(model) is None:
-            continue
         meta = _get_model_meta_strict_card(model)
-        pts.append({"model": model, "requests": r["requests_per_5h"], "intel": aa_map[model], "cost": ref / r["requests_per_5h"], "brand": meta["brand"], "modality": meta["modality"]})
+        info = mval.get(model) or {}
+        val = info.get("value")
+        requests = r["requests_per_5h"] if r else 0
+        cost = (ref / requests) if requests else None
+        if r is None or val is None:
+            refs.append({"model": model, "cost": cost, "free": not requests, "brand": meta["brand"]})
+            continue
+        item = {"model": model, "requests": requests, "intel": val, "cost": cost,
+                "brand": meta["brand"], "modality": meta["modality"], "asof": info.get("asof")}
+        (stale_pts if info.get("stale") else pts).append(item)
+    # 停更分不参与帕累托判定（与网页同一口径）
     for p in pts:
         p["pareto"] = is_pareto(p, pts)
-    refs = []
-    for model in [r["model"] for r in baseline]:
-        r = snap_by.get(model)
-        if not r or aa_map.get(model) is not None:
-            continue
-        meta = _get_model_meta_strict_card(model)
-        refs.append({"model": model, "cost": (ref / r["requests_per_5h"]) if r["requests_per_5h"] else None, "free": not r["requests_per_5h"], "brand": meta["brand"]})
     frontier = sorted([p for p in pts if p["pareto"]], key=lambda x: x["cost"])
     base_model = max((r for r in baseline if r["requests_per_5h"]), key=lambda r: r["requests_per_5h"])
-    return pts, frontier, refs, x_max, base_model
+    return pts, stale_pts, frontier, refs, x_max, base_model
 
 
-def build_oc_card(date, quota, aa, icons):
-    latest = max(quota["snapshots"])
-    pts, frontier, refs, xMax_global, base_model = build_oc_dataset(date, quota, aa)
+def build_oc_card(date, quota, metric, mdoc, icons):
+    metric_def = METRIC_DEFS[metric]
+    unit_label = metric_def["unit"]
+    fmt_value, missing_label = metric_def["fmt"], metric_def["missing"]
+    stat_label = metric_def["stat"]
+    src_name, src_url = metric_def["source"]
+    pts, stale_pts, frontier, refs, xMax_global, base_model = build_oc_dataset(date, quota, metric, mdoc)
+    ycfg = metric_y_range([p["intel"] for p in pts] + [p["intel"] for p in stale_pts])
+    stale_asof = max((s.get("asof") or "" for s in stale_pts), default="")
+    stale_badge = f' · {len(stale_pts)} 停更' if stale_pts else ""
+    stale_legend = ('<span style="display:inline-flex;gap:6px;align-items:center"><i class="dot-stale"></i> 已停更（不参与最优）</span>' if stale_pts else "")
+    stale_sub = " · 灰虚线圈为已停更的旧分（不参与最优）" if stale_pts else ""
+    stale_foot = (f' · {len(stale_pts)} 个模型指标已停更（灰虚线圈，最后更新于 {stale_asof}，不参与最优）' if stale_pts else "")
     label = quota["snapshots"][date].get("label", "")
     badge_label = f"{label}快照" if label == "今日" else (label or date)
     count, fcount = len(pts), len(frontier)
-    svg_str = build_pareto_svg(pts, frontier, refs, xMax_global, icons)
+    svg_str = build_pareto_svg(pts, stale_pts, frontier, refs, xMax_global, icons, ycfg, unit_label, fmt_value, missing_label)
+    missing = sorted(r["model"] for r in refs if not r["free"])
+    if missing:
+        shown = "、".join(missing[:6]) + (f" 等 {len(missing)} 个" if len(missing) > 6 else "")
+        no_score_html = f'<div class="no-score">无 {missing_label}（{len(missing)}）：{shown}</div>'
+        no_score_badge = f" · {len(missing)} 无分"
+    else:
+        no_score_html, no_score_badge = "", ""
     # winners
     brand_meta = {"muse": "Meta", "zhipu": "智谱", "kimi": "月之暗面", "qwen": "阿里", "deepseek": "深度求索", "grok": "xAI", "openai": "OpenAI", "xiaomimimo": "小米", "minimax": "MiniMax", "hunyuan": "腾讯"}
     winners_html = ""
@@ -307,12 +420,12 @@ def build_oc_card(date, quota, aa, icons):
       <div class="avatar"><img src="{icons.get(p["brand"], icons.get("unknown",""))}" alt="{p["model"]}"></div>
       <div><div class="winner-name">{p["model"]}</div><div class="winner-meta"><span class="tag {"m" if p["modality"]=="多模态" else ("t" if p["modality"]=="纯文字" else "u")}">{"M" if p["modality"]=="多模态" else ("T" if p["modality"]=="纯文字" else "?")}</span> {p["modality"]} · {bname}</div></div>
     </div>
-    <div class="winner-stats"><div class="stat cost"><label>相对成本</label><strong>{p["cost"]:.2f}</strong></div><div class="stat intel"><label>AA 智力</label><strong>{p["intel"]:.1f}</strong></div></div>
-    <div class="winner-note">配额 <b>{p["requests"]:,} / 5h</b> · 智力 {p["intel"]:.1f}</div>
+    <div class="winner-stats"><div class="stat cost"><label>相对成本</label><strong>{p["cost"]:.2f}</strong></div><div class="stat intel"><label>{stat_label}</label><strong>{fmt_value(p["intel"])}</strong></div></div>
+    <div class="winner-note">配额 <b>{p["requests"]:,} / 5h</b> · {stat_label} {fmt_value(p["intel"])}</div>
   </div>'''
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OpenCode Go 帕累托最优 · {date} · 分享卡片</title>
+<title>OpenCode Go 帕累托最优 · {date} · {metric_def["short"]} · 分享卡片</title>
 <meta property="og:title" content="OpenCode Go 模型帕累托最优 · {date}">
 <meta property="og:description" content="{frontier[0]["model"] if frontier else ""} 以成本 {frontier[0]["cost"]:.2f} 领跑，{fcount} 模型构成帕累托最优">
 <style>
@@ -333,11 +446,11 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 .badge-10{{display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;border:1px solid #e2e8f0;color:#334155;border-radius:999px;padding:7px 12px;font-size:12.5px;font-weight:650}}
 .chart-box{{margin:22px 32px 0;background:linear-gradient(180deg,#fbfdff 0%,#f8fafc 100%);border:1px solid #e6eef6;border-radius:20px;padding:14px 14px 6px}}
 .chart-legend{{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:0 8px 10px;color:#475569;font-size:12.5px}}
-.dot{{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--orange);background:#fff;display:inline-block}}.line{{width:18px;height:3px;border-radius:2px;background:var(--orange);display:inline-block}}
+.dot{{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--orange);background:#fff;display:inline-block}}.line{{width:18px;height:3px;border-radius:2px;background:var(--orange);display:inline-block}}.dot-stale{{width:14px;height:14px;border-radius:50%;border:2px dashed #94a3b8;background:#fff;display:inline-block}}
 .legend-m{{width:16px;height:16px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}}
 .legend-t{{width:16px;height:16px;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}}
 .legend-u{{width:16px;height:16px;border-radius:50%;background:#94a3b8;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}}
-.winners{{padding:18px 32px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}}
+.winners{{padding:18px 32px 0;display:grid;grid-template-columns:repeat({max(1, min(fcount, 3))},1fr);gap:14px}}
 .winner{{position:relative;background:#fff;border:1.5px solid #e2e8f0;border-radius:18px;padding:16px 16px 14px;overflow:hidden}}
 .winner.optimal{{border-color:#fed7aa;box-shadow:0 8px 20px rgba(234,88,12,.10)}}.winner.optimal::before{{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#ea580c,#f59e0b)}}
 .rank{{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:50%;background:#0f172a;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}}.rank.gold{{background:linear-gradient(135deg,#ea580c,#f59e0b)}}
@@ -345,24 +458,25 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 .winner-name{{font-weight:800;font-size:15px;line-height:1.25}}.winner-meta{{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;margin-top:2px}}
 .tag{{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;color:#fff;font-size:9px;font-weight:800}}.tag.m{{background:var(--blue)}}.tag.t{{background:var(--teal)}}.tag.u{{background:#94a3b8}}
 .winner-stats{{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;background:#f8fafc;border-radius:12px;padding:11px 12px}}
-.stat label{{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;font-weight:700}}.stat strong{{display:block;font-size:18px;line-height:1.1;margin-top:2px;letter-spacing:-.02em}}.stat.cost strong{{color:var(--orange)}}.stat.intel strong{{color:var(--teal)}}.winner-note{{margin-top:10px;font-size:12px;color:#64748b;line-height:1.5}}
+.stat label{{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;font-weight:700}}.stat strong{{display:block;font-size:18px;line-height:1.1;margin-top:2px;letter-spacing:-.02em}}.stat.cost strong{{color:var(--orange)}}.stat.intel strong{{color:var(--teal)}}.winner-note{{margin-top:10px;font-size:12px;color:#64748b;line-height:1.5}}.no-score{{padding:6px 6px 4px;font-size:11.5px;color:#94a3b8;line-height:1.5}}
 .foot{{padding:16px 32px 22px;display:flex;justify-content:space-between;gap:16px;align-items:flex-end;color:#94a3b8;font-size:11.5px;line-height:1.6;border-top:1px solid #f1f5f9;margin-top:18px}}.foot a{{color:#64748b;text-decoration:none;border-bottom:1px dashed #cbd5e1}}
 .hash{{display:flex;gap:8px;flex-wrap:wrap}}.hash span{{background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:600}}
 @media(max-width:720px){{.card-head{{flex-direction:column}}.winners{{grid-template-columns:1fr}}.chart-box{{margin-left:16px;margin-right:16px}}}}
 </style></head><body><div class="shell"><p class="hint">长按 / 右键保存图片分享 · 1080px 竖版卡片 · 数据截至 {date}</p>
 <div class="card" id="capture"><div class="card-top"></div>
 <div class="card-head"><div><div class="eyebrow">OpenCode Go · Pareto Optimal</div><h1>OpenCode Go · {date} · <span>智力 × 配额成本</span> 帕累托最优</h1>
-<p class="sub">纵轴 <b>AA Intelligence Index</b>（越高越好）· 横轴 <b>相对配额成本</b>（越低越好，<b>配额最多者 = 1.0</b>）<br>橙色外环与连线为帕累托最优集合 · 左上为理想方向</p></div>
-<div class="badges"><div class="badge-date"><i></i> {badge_label} </div><div class="badge-10">{count} 模型 · {fcount} 帕累托最优</div></div></div>
+<p class="sub">纵轴 <b>{unit_label}</b>（越高越好）· 横轴 <b>相对配额成本</b>（越低越好，<b>配额最多者 = 1.0</b>）<br>橙色外环与连线为帕累托最优集合{stale_sub} · 左上为理想方向</p></div>
+<div class="badges"><div class="badge-date"><i></i> {badge_label} </div><div class="badge-10">{count} 有效 · {fcount} 帕累托最优{stale_badge}{no_score_badge}</div></div></div>
 <div class="chart-box"><div class="chart-legend">
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="dot"></i> 帕累托最优</span>
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="line"></i> 最优前沿</span>
+{stale_legend}
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-m">M</i> 多模态</span>
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-t">T</i> 纯文字</span>
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-u">?</i> 模态未知</span>
 <span style="margin-left:auto;color:#94a3b8">对数刻度 · 基准 {base_model["model"]} ({base_model["requests_per_5h"]:,} / 5h)</span></div>
-{svg_str}</div><div class="winners">{winners_html}</div>
-<div class="foot"><div>数据来源：<a href="https://opencode.ai/v2/docs/console/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 相对成本以配额最多者为 1.0<br>
+{svg_str}{no_score_html}</div><div class="winners">{winners_html}</div>
+<div class="foot"><div>数据来源：<a href="https://opencode.ai/v2/docs/console/go/">OpenCode Go</a> 用量快照 &amp; <a href="{src_url}">{src_name}</a> · 相对成本以配额最多者为 1.0{stale_foot}<br>
 生成时间 {date} · 已嵌入全部数据，无需联网 · <span style="color:#64748b">index.html</span> · <a href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" style="color:#0f766e;font-weight:650;text-decoration:none;border-bottom:1px dashed #99f6e4">GitHub: Jst-Well-Dan/opencode-go-model-pareto</a></div>
 </div></div></div></body></html>''', frontier
 
@@ -380,6 +494,8 @@ def build_goat_card(date, goat_quota, aa, icons):
     aa_map = {m["model"]: m["intelligence"] for m in aa_models_for_date(aa, date)}
     aa_by_norm = {}
     for r in aa_models_for_date(aa, date):
+        if r.get("stale"):
+            continue
         for k in [r["model"], r.get("aa_model_id") or ""]:
             if k:
                 aa_by_norm[norm(k)] = r
@@ -415,7 +531,9 @@ def build_goat_card(date, goat_quota, aa, icons):
     label = goat_quota["snapshots"][date].get("label", "")
     badge_label = f"{label}快照" if label == "今日" else (label or date)
     count, fcount = len(pts), len(frontier)
-    svg_str = build_pareto_svg(pts, frontier, refs, xMax_global, icons)
+    y_vals = [p["intel"] for p in pts] or [0]
+    ycfg = metric_y_range(y_vals)
+    svg_str = build_pareto_svg(pts, [], frontier, refs, xMax_global, icons, ycfg, "AA Intelligence Index", METRIC_DEFS["aa"]["fmt"], METRIC_DEFS["aa"]["missing"])
     brand_meta = {"muse": "Meta", "zhipu": "智谱", "kimi": "月之暗面", "qwen": "阿里", "deepseek": "深度求索", "grok": "xAI", "openai": "OpenAI", "xiaomimimo": "小米", "minimax": "MiniMax", "hunyuan": "腾讯", "gemini": "Google", "inkling": "Inkling", "nemotron": "NVIDIA", "step": "阶跃"}
     winners_html = ""
     for i, p in enumerate(frontier[:3]):
@@ -474,7 +592,7 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 </style></head><body><div class="shell"><p class="hint">长按 / 右键保存图片分享 · 1080px 竖版卡片 · 数据截至 {date}</p>
 <div class="card" id="capture"><div class="card-top"></div>
 <div class="card-head"><div><div class="eyebrow">Command GOAT · Pareto Optimal</div><h1>Command GOAT · {date} · <span>智力 × 配额成本</span> 帕累托最优</h1>
-<p class="sub">纵轴 <b>AA Intelligence Index</b>（越高越好）· 横轴 <b>相对配额成本</b>（越低越好，<b>配额最多者 = 1.0</b>）<br>橙色外环与连线为帕累托最优集合 · 左上为理想方向 · 32 模型</p></div>
+<p class="sub">纵轴 <b>AA Intelligence Index</b>（越高越好）· 横轴 <b>相对配额成本</b>（越低越好，<b>配额最多者 = 1.0</b>）<br>橙色外环与连线为帕累托最优集合 · 左上为理想方向 · {count} 模型</p></div>
 <div class="badges"><div class="badge-date"><i></i> {badge_label} </div><div class="badge-10">{count} 模型 · {fcount} 帕累托最优</div></div></div>
 <div class="chart-box"><div class="chart-legend">
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="dot"></i> 帕累托最优</span>
@@ -484,7 +602,7 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="legend-u">?</i> 模态未知</span>
 <span style="margin-left:auto;color:#94a3b8">对数刻度 · 基准 {base_model["model"]} ({base_model["requests_per_5h"]:,} / 5h)</span></div>
 {svg_str}</div><div class="winners">{winners_html}</div>
-<div class="foot"><div>数据来源：<a href="https://commandcode.ai/docs/plans/goat">Command GOAT</a> 核心两表 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 相对成本以配额最多者为 1.0<br>
+<div class="foot"><div>数据来源：<a href="https://commandcode.ai/docs/plans/goat">Command GOAT</a> 核心两表 &amp; <a href="https://artificialanalysis.ai/leaderboards/models">AA Index</a> · 相对成本以配额最多者为 1.0<br>
 生成时间 {date} · 已嵌入全部数据，无需联网 · <a href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" style="color:#0f766e;font-weight:650;text-decoration:none;border-bottom:1px dashed #99f6e4">GitHub: Jst-Well-Dan/opencode-go-model-pareto</a></div>
 </div></div></div></body></html>''', frontier
 
@@ -496,6 +614,8 @@ def build_comparison_card(oc_quota, goat_quota, aa, icons):
     gr = {norm(r["model"]): r for r in goat_quota["snapshots"][god]["models"]}
     aa_by = {}
     for rr in aa_models_for_date(aa, god):
+        if rr.get("stale"):
+            continue
         for k in [rr["model"], rr.get("aa_model_id")]:
             if k and norm(k):
                 aa_by[norm(k)] = rr.get("intelligence")
@@ -578,7 +698,7 @@ h1 span{{background:linear-gradient(90deg,#0f172a 0%,#334155 100%);-webkit-backg
 <span style="display:inline-flex;gap:6px;align-items:center"><i class="dot-goat"></i> Command GOAT</span>
 <span style="margin-left:auto;color:#94a3b8">对数刻度 · 按智商降序</span></div>
 {svg_str}</div>
-<div class="foot"><div>数据来源：<a href="https://opencode.ai/v2/docs/console/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://commandcode.ai/docs/plans/goat">GOAT</a> 核心两表 &amp; <a href="https://aihot.virxact.com/leaderboard/methodology">AA Index</a> · 对数刻度；GOAT 月档位 $20~$70，OC 固定 $15/30/60<br>
+<div class="foot"><div>数据来源：<a href="https://opencode.ai/v2/docs/console/go/">OpenCode Go</a> 用量快照 &amp; <a href="https://commandcode.ai/docs/plans/goat">GOAT</a> 核心两表 &amp; <a href="https://artificialanalysis.ai/leaderboards/models">AA Index</a> · 对数刻度；GOAT 月档位 $20~$70，OC 固定 $15/30/60<br>
 生成时间 {date} · 已嵌入全部数据，无需联网 · <a href="https://github.com/Jst-Well-Dan/opencode-go-model-pareto" style="color:#0f766e;font-weight:650;text-decoration:none;border-bottom:1px dashed #99f6e4">GitHub: Jst-Well-Dan/opencode-go-model-pareto</a></div>
 </div></div></div></body></html>''', rows
 
@@ -602,10 +722,12 @@ def html_to_cropped_png(html_str: str, output_path: Path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate share cards as cropped PNGs (latest snapshot only, 3 graphs)")
-    parser.add_argument("--keep-html", action="store_true", help="保留中间 HTML 文件到 cards/ 供调试")
+    parser = argparse.ArgumentParser(description="Generate share cards as cropped PNGs (latest snapshot only)")
+    parser.add_argument("--keep-html", action="store_true", help="保留中间 HTML 文件到输出目录供调试")
     parser.add_argument("--no-image", action="store_true", help="仅生成 HTML，不截图")
-    parser.add_argument("--type", choices=["oc", "goat", "cmp", "all"], default="all", help="生成类型，默认 all（3 张）")
+    parser.add_argument("--type", choices=["oc", "goat", "cmp", "all"], default="all", help="生成类型，默认 all")
+    parser.add_argument("--metric", choices=METRIC_ORDER + ["all"], default="all", help="OC 卡片口径，默认 all（AA + LMArena + AIHOT 三张）")
+    parser.add_argument("--outdir", type=Path, default=None, help="输出目录，默认 cards/<最新日期>/")
     args = parser.parse_args()
 
     quota = json.loads((ROOT / "data" / "snapshots" / "quota-snapshots.json").read_text(encoding="utf-8"))
@@ -615,9 +737,10 @@ def main():
 
     latest_oc = max(quota["snapshots"])
     latest_goat = max(goat_quota["snapshots"])
+    metrics = METRIC_ORDER if args.metric == "all" else [args.metric]
 
-    cards_dir = ROOT / "cards"
-    cards_dir.mkdir(exist_ok=True)
+    cards_dir = args.outdir or (ROOT / "cards" / latest_oc)
+    cards_dir.mkdir(parents=True, exist_ok=True)
 
     targets = []
     if args.type in ("oc", "all"):
@@ -627,39 +750,34 @@ def main():
     if args.type in ("cmp", "all"):
         targets.append("cmp")
 
-    # build HTMLs
     html_map = {}
     if "oc" in targets:
-        html_oc, frontier_oc = build_oc_card(latest_oc, quota, aa, icons)
-        html_map["oc"] = (html_oc, f"OC {latest_oc} frontier {[f['model'] for f in frontier_oc]}")
-        png_oc = cards_dir / f"opencode-card-{latest_oc}.png"
-        html_oc_path = cards_dir / f"opencode-card-{latest_oc}.html"
-        if args.keep_html or args.no_image:
-            html_oc_path.write_text(html_oc, encoding="utf-8")
-            print(f"Generated {html_oc_path.name} ({len(html_oc)} bytes) {html_map['oc'][1]}")
-        if not args.no_image:
-            html_map["oc"] = (html_oc, png_oc)
+        for metric in metrics:
+            mdoc = load_metric_doc(metric)
+            if mdoc is None:
+                print(f"跳过 OC-{metric}：缺少 {METRIC_DEFS[metric]['path'].name}")
+                continue
+            html_oc, frontier_oc = build_oc_card(latest_oc, quota, metric, mdoc, icons)
+            out_png = cards_dir / f"opencode-card-{latest_oc}-{metric}.png"
+            print(f"OC {metric} {latest_oc}: {len(frontier_oc)} 帕累托最优 {[f['model'] for f in frontier_oc]}")
+            if args.keep_html or args.no_image:
+                (cards_dir / f"opencode-card-{latest_oc}-{metric}.html").write_text(html_oc, encoding="utf-8")
+            if not args.no_image:
+                html_map[f"oc-{metric}"] = (html_oc, out_png)
     if "goat" in targets:
         html_goat, frontier_goat = build_goat_card(latest_goat, goat_quota, aa, icons)
-        html_map["goat"] = (html_goat, f"GOAT {latest_goat} frontier {[f['model'] for f in frontier_goat]}")
-        png_goat = cards_dir / f"goat-card-{latest_goat}.png"
-        html_goat_path = cards_dir / f"goat-card-{latest_goat}.html"
+        print(f"GOAT {latest_goat}: {len(frontier_goat)} 帕累托最优 {[f['model'] for f in frontier_goat]}")
         if args.keep_html or args.no_image:
-            html_goat_path.write_text(html_goat, encoding="utf-8")
-            print(f"Generated {html_goat_path.name} ({len(html_goat)} bytes) {html_map['goat'][1]}")
+            (cards_dir / f"goat-card-{latest_goat}.html").write_text(html_goat, encoding="utf-8")
         if not args.no_image:
-            html_map["goat"] = (html_goat, png_goat)
+            html_map["goat"] = (html_goat, cards_dir / f"goat-card-{latest_goat}.png")
     if "cmp" in targets:
         html_cmp, rows_cmp = build_comparison_card(quota, goat_quota, aa, icons)
-        html_map["cmp"] = (html_cmp, f"CMP {len(rows_cmp)} models")
-        # comparison uses latest_goat as version (same as goat latest)
-        png_cmp = cards_dir / f"comparison-card-{latest_goat}.png"
-        html_cmp_path = cards_dir / f"comparison-card-{latest_goat}.html"
+        print(f"CMP {len(rows_cmp)} models")
         if args.keep_html or args.no_image:
-            html_cmp_path.write_text(html_cmp, encoding="utf-8")
-            print(f"Generated {html_cmp_path.name} ({len(html_cmp)} bytes) {html_map['cmp'][1]}")
+            (cards_dir / f"comparison-card-{latest_goat}.html").write_text(html_cmp, encoding="utf-8")
         if not args.no_image:
-            html_map["cmp"] = (html_cmp, png_cmp)
+            html_map["cmp"] = (html_cmp, cards_dir / f"comparison-card-{latest_goat}.png")
 
     if args.no_image:
         print(f"Done (no-image). HTMLs in {cards_dir}")
@@ -669,22 +787,28 @@ def main():
         from playwright.sync_api import sync_playwright  # noqa: F401
     except ImportError:
         print("Playwright 未安装，跳过截图。请执行: pip install playwright && playwright install chromium")
-        print("已生成 HTML，可手动截图；或安装后重跑本脚本直接出图。")
+        print(f"已生成 HTML 到 {cards_dir}，可手动截图；或安装后重跑本脚本直接出图。")
         return
 
     for key in targets:
-        html_str, out_png = html_map[key]
-        html_to_cropped_png(html_str, out_png)
-        print(f"Screenshotted {out_png.name}")
+        if key not in html_map:
+            for k in [k for k in html_map if k.startswith(key + "-")]:
+                html_to_cropped_png(*html_map[k])
+                print(f"Screenshotted {html_map[k][1].name}")
+            continue
+        html_to_cropped_png(*html_map[key])
+        print(f"Screenshotted {html_map[key][1].name}")
 
     if not args.keep_html:
         for p in cards_dir.glob("*.html"):
-            if p.name.startswith(("opencode-card-", "goat-card-", "comparison-card-")):
-                p.unlink(missing_ok=True)
-        print("已清理中间 HTML，仅保留 *-card-*.png")
+            p.unlink(missing_ok=True)
+        print("已清理中间 HTML，仅保留 *.png")
 
-    print(f"Done. Cards in {cards_dir} -> {[p.name for p in sorted(cards_dir.glob('*-card-*.png'))]}")
+    print(f"Done. Cards in {cards_dir} -> {[p.name for p in sorted(cards_dir.glob('*.png'))]}")
 
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()
