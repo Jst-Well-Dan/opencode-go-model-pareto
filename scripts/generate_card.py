@@ -725,7 +725,7 @@ def main():
     parser = argparse.ArgumentParser(description="Generate share cards as cropped PNGs (latest snapshot only)")
     parser.add_argument("--keep-html", action="store_true", help="保留中间 HTML 文件到输出目录供调试")
     parser.add_argument("--no-image", action="store_true", help="仅生成 HTML，不截图")
-    parser.add_argument("--type", choices=["oc", "goat", "cmp", "all"], default="all", help="生成类型，默认 all")
+    parser.add_argument("--type", choices=["oc", "goat", "cmp", "all"], default="oc", help="生成类型，默认 oc（只出分享用的 OC 卡片；goat/cmp 需显式指定）")
     parser.add_argument("--metric", choices=METRIC_ORDER + ["all"], default="all", help="OC 卡片口径，默认 all（AA + LMArena + AIHOT 三张）")
     parser.add_argument("--outdir", type=Path, default=None, help="输出目录，默认 cards/<最新日期>/")
     args = parser.parse_args()

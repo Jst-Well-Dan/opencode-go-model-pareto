@@ -62,8 +62,9 @@ python scripts/generate_rank_change.py
 ```bash
 python scripts/fetch_data.py --output-dir test   # 输出到 test/，不覆盖正式文件
 python scripts/fetch_data.py --no-generate       # 仅更新 JSON 数据，不渲染 HTML
-python scripts/generate_card.py                  # 一次出齐：AA/LMArena/AIHOT 三张 + GOAT + 对比图
+python scripts/generate_card.py                  # 默认只出 OC 三张：AA / LMArena / AIHOT
 python scripts/generate_card.py --metric aihot   # 只出指定口径的 OC 卡片
+python scripts/generate_card.py --type all       # 额外再出 goat / comparison（日常分享不需要）
 python scripts/generate_card.py --keep-html      # 保留中间生成的 HTML 供调试
 python scripts/generate_card.py --no-image       # 仅生成 HTML，不截图 PNG
 python scripts/generate.py --domain pinned --output compare-pinned.html      # 固定基准对照版
@@ -105,8 +106,8 @@ python scripts/generate.py --domain adaptive --output compare-adaptive.html  # �
 
 ### 4. 社交分享卡片
 - `scripts/generate_card.py` 基于 Playwright 渲染 1080px 竖版卡片并对 `#capture` 元素精准裁切，**无需手工截图**。
-- 默认输出到 `cards/<最新快照日期>/`（`cards/` 已 gitignore），一次生成 5 张：
-  `opencode-card-<date>-{aa,lm,aihot}.png`、`goat-card-<date>.png`、`comparison-card-<date>.png`。
+- 默认输出到 `cards/<最新快照日期>/`（`cards/` 已 gitignore），默认只生成分享用的三张
+  `opencode-card-<date>-{aa,lm,aihot}.png`；`goat-card`、`comparison-card` 仅在 `--type goat|cmp|all` 时生成。
 - OC 卡片三档口径与网页同构：`--metric aa|lm|aihot|all`（默认 all），每档独立纵轴与刻度
   （AA 步长自适应、Agent 分为 `±0.0xx` 带符号、AIHOT 分 0.5 级），副标题、坐标轴、页脚来源随口径切换。
 - **停更分不进前沿**：`stale: true` 的模型只画灰色虚线圈（页脚注明停更数量与最后更新日期），
