@@ -29,6 +29,7 @@ jobs:
           python-version: "3.13"
 
       - name: Fetch latest data and regenerate HTML
+        id: fetch
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
@@ -36,11 +37,20 @@ jobs:
           retry_wait_seconds: 60
           retry_on: error
           command: python scripts/fetch_data.py
-        # 官方 Data API 需免费 Key（secrets.ARTIFICIAL_ANALYSIS_API_KEY），解析失败直接抛错
-        # 失败时 GitHub 会自动通过 Actions 失败通知邮件提醒 Watch 者（无需额外 SMTP）
-        # 如需静默跳过而非标红，可改回 run + continue-on-error: true
+        # 官方 Data API 需免费 Key（secrets.ARTIFICIAL_ANALYSIS_API_KEY），解析失败抛错
+        # 失败不再让作业变红：continue-on-error + 下一步丢弃半成品，作业保持成功，
+        # 因此 GitHub 不会发出 Actions 失败通知邮件。失败信息仍在日志里（::warning::）。
+        continue-on-error: true
+
+      - name: Discard partial changes on fetch failure
+        if: steps.fetch.outcome == 'failure'
+        run: |
+          echo "::warning::数据抓取失败，本次跳过更新（作业保持成功，不发送失败邮件）"
+          git checkout -- . || true
+          git clean -fdq data index.html || true
 
       - name: Commit and push if changed
+        if: steps.fetch.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

@@ -2,7 +2,8 @@
 """Fetch OpenCode Go quotas and AA scores via official Data API, then regenerate the HTML (OC only).
 
 - 智力分：走官方 https://artificialanalysis.ai/api/v2/data/llms/models 需 x-api-key（免费 Key）
-  解析失败直接抛错，交由 GitHub Actions 失败通知邮件
+  解析失败（接口本身异常）直接抛错，交由 GitHub Actions 记录（作业不变红、不发邮件，见 daily.yml）；
+  AA 免费档覆盖缩水导致的缺分不算失败：保留最后已知分值 + stale/asof 标记，前端展示为灰虚线圈且不参与帕累托
 - 配额：仍抓 https://opencode.ai/v2/docs/console/go/
 - 模态：scrape 结果缓存到 data/aa-modality-cache.json，新模型才抓取
 
@@ -41,6 +42,9 @@ MODALITY_CACHE_PATH = ROOT / "data" / "cache" / "aa-modality-cache.json"
 GENERATOR_PATH = ROOT / "scripts" / "generate.py"
 OPENCODE_URL = "https://opencode.ai/v2/docs/console/go/"
 AA_API_URL = "https://artificialanalysis.ai/api/v2/data/llms/models"
+# 免费档只覆盖当前主力代（2026-10 起约 90/720 个模型带 intelligence index）；
+# 低于该阈值视为接口本身异常（而非覆盖范围变化），本次不更新。
+AA_MIN_SCORED_MODELS = 20
 USER_AGENT = "opencode-go-model-pareto/1.0 (+https://opencode.ai/v2/docs/console/go/)"
 
 def _load_json_strict_fetch(path: Path, name: str):
@@ -211,7 +215,7 @@ def fetch(url: str, retries: int = 5, timeout: int = 45, headers: dict[str, str]
 
 
 def fetch_aa_via_api() -> dict[str, float]:
-    """走官方 Data API 获取智力分，失败直接抛错（由 Actions 邮件通知）"""
+    """走官方 Data API 获取智力分，失败直接抛错（由 Actions 日志记录）"""
     api_key = _get_api_key()
     raw = fetch(AA_API_URL, retries=5, timeout=45, headers={"x-api-key": api_key, "Accept": "application/json"})
     try:
@@ -615,7 +619,7 @@ def _save_modality_cache(cache: dict[str, str]) -> None:
 
 def scrape_aa_modality(slug: str) -> str:
     """抓取官网 Input modality。严格模式：404（slug 拼错或 AA 尚未收录）与解析失败一律抛错，
-    不回落默认值；由调用方阻断本次更新并经由 Actions 失败通知人工处理
+    不回落默认值；由调用方阻断本次更新，失败信息写入 Actions 日志（不标红、不发邮件）
     （变体行请在 data/registry/slug-alias.json 补映射后重跑）。"""
     cache = _load_modality_cache()
     if slug in cache and cache[slug] in ("多模态", "纯文字"):
@@ -954,20 +958,34 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
                 row["aa_model_id"] = candidate
                 row["intelligence"] = aa_scores[candidate]
                 print(f"Backfilled {row['model']!r} -> {candidate} ({aa_scores[candidate]})")
-    missing_scores = []
+    # AA 免费档自 2026-10-29 起只覆盖各家的当前主力代，老模型不再返回 intelligence index。
+    # 策略：缺分不再抛错阻断更新，而是保留最后已知分值并标 stale=true + asof；
+    # 前端以灰虚线圈展示，明确排除在帕累托之外（新旧口径不可混算）。
+    if len(aa_scores) < AA_MIN_SCORED_MODELS:
+        raise RuntimeError(
+            f"AA API 仅返回 {len(aa_scores)} 个智力分（阈值 {AA_MIN_SCORED_MODELS}），疑似接口异常，本次不更新"
+        )
+    stale_models: list[str] = []
     for row in existing_aa:
         slug = row.get("aa_model_id")
         if not slug:
             continue
         if slug in aa_scores:
             row["intelligence"] = aa_scores[slug]
+            row["asof"] = snapshot_date
+            row.pop("stale", None)
         elif row.get("intelligence") is not None:
-            if row.get("model") in removed:
-                print(f"AA score missing for retired model {row['model']} ({slug}), keeping previous {row['intelligence']}", file=sys.stderr)
-            else:
-                missing_scores.append(slug)
-    if missing_scores:
-        raise RuntimeError(f"AA API 未包含已知模型 IDs: {missing_scores}，请检查官方接口或模型是否更名")
+            asof = row.get("asof") or latest_aa_date
+            row["stale"] = True
+            row["asof"] = asof
+            if row.get("model") not in removed:
+                stale_models.append(f"{row['model']}={row['intelligence']}@{asof}")
+    if stale_models:
+        print(
+            f"AA 免费档未覆盖 {len(stale_models)} 个模型，保留最后已知分值并标记停更（不参与帕累托）: "
+            + ", ".join(stale_models),
+            file=sys.stderr,
+        )
     updated_aa["snapshots"] = dict(aa_snapshots)
     for snap in updated_aa["snapshots"].values():
         if snap.get("label") == "今日":

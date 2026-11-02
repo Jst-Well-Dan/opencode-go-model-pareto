@@ -86,6 +86,7 @@ python scripts/generate.py --domain adaptive --output compare-adaptive.html  # �
 ### 2. 容错机制与异常值处理
 - **空配额/免费档**：线上配额为 `-` 的模型（如免费档 `Ox Alpha Free`）标记为 `cost: null`，不参与帕累托计算，在横轴最左端以虚线头像锚定展示（`免费 · 不限`）。
 - **缺分模型**：有配额但暂无 AA 评测分的模型以虚线头像标在其相对成本位置，并在缺失信息面板中以等宽卡片展示。
+- **AA 免费档停供分值**：AA 官方免费 Key 自 2026-10-28 之后只覆盖各家当前主力代（约 90/720 个模型带 `intelligence index`），上一代模型不再返回分值。`update_documents()` 不再因“已知模型缺分”整体抛错，而是保留最后已知分值并写入 `stale: true` + `asof`（最后确认日期），前端以灰虚线圈展示、悬浮提示标明「AA 免费档已停供该模型，最后已知分值截至 …」，且**不参与帕累托计算**（新旧口径不可混算）。只有当接口返回的分值数量低于 `AA_MIN_SCORED_MODELS`（默认 20）时才视为接口异常、中止本次更新。
 - **历史快照缺失对齐**：以最新快照为基准，结合历史快照并集（`generate_html.py` 自动追加历史独有模型）决定模型全集；当切换到新模型尚未上线的历史日期时，缺失模型自动以 `null`/`absent` 对齐过滤，不会在历史图表中误渲染。已下线模型（如 `Ox Alpha Free` / `Grok 4.5`）仅从最新快照移除，历史快照仍保留，AA 侧保留最后已知分数不报错。
 - **去重快照**：`fetch_data.py:update_documents()` 在 `quota` 与 `AA` 均与最新快照完全一致（含 `AA_SLUG_ALIAS` 回填）时跳过新建当日快照，避免 `2026-08-23/24` 这类重复提交；新增模型或分数变动则仍正常落盘。
 - **促销行解析**：配额表出现 `<del>旧值</del> 新值`（如 `4x` 活动改价）时丢弃删除线旧值、取现行值；模型格的 `<small>` 活动说明（如 `4x · 9 月 20 日结束`）记入行 `note` 字段（模型名保持归一不断历史），悬浮提示中以「备注」展示。
@@ -138,7 +139,7 @@ python scripts/generate.py --domain adaptive --output compare-adaptive.html  # �
 ## 自动化与部署
 
 - **GitHub Pages**：静态单文件托管（`main / (root)`）。
-- **GitHub Actions**：每天 09:00 CST 定时触发 `.github/workflows/daily.yml`（`nick-fields/retry@v3` 重试 3 次），拉取最新配额与评分；无 Pro Key 依赖，纯镜像+官网 HTML 抓取，若数据无变化则去重跳过。
+- **GitHub Actions**：每天 09:00 CST 定时触发 `.github/workflows/daily.yml`（`nick-fields/retry@v3` 重试 3 次），拉取最新配额与评分；无 Pro Key 依赖，纯镜像+官网 HTML 抓取，若数据无变化则去重跳过。抓取失败时作业仍保持成功（`continue-on-error` + 丢弃半成品改动），只在日志里留 `::warning::`，**不会触发 Actions 失败通知邮件**。
 - **忽略规则**：`cards/` 为本地产物不提交。
 - **技术栈**：
   - 数据与生成：Python 3.13（标准库 `HTMLParser` 解析 + `Playwright` 截图）
