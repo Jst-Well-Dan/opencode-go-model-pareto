@@ -3,9 +3,9 @@
   "source": "https://aihot.news/leaderboard",
   "source_url": "https://aihot.news/leaderboard",
   "source_note": "AIHOT 综合榜（第三方评测加权：编程 38%、科研 19%、专业办公 19%、知识问答 14%、真人盲选 10%）；官方暂无榜单 API，本项目只展示前 30 名内的分数，属个人非商业引用，附回链",
-  "last_fetched_at": "2026-11-03T21:54:24.382954+00:00",
+  "last_fetched_at": "2026-11-04T22:04:49.972722+00:00",
   "source_meta": {
-    "board_updated_at": "11/04 02:05",
+    "board_updated_at": "11/05 02:05",
     "evaluations": 55,
     "institutions": 16,
     "rows": 30
@@ -227,7 +227,7 @@
       ]
     },
     "2026-11-04": {
-      "label": "今日",
+      "label": "",
       "models": [
         {
           "model": "GLM-5.3-Flash",
@@ -385,6 +385,228 @@
         },
         {
           "model": "DeepSeek V4 Pro",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Hy4 preview",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Hy3",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Grok 4.7",
+          "aihot_model_id": "grok-4-7",
+          "score": 62.6,
+          "coverage": 97,
+          "rank": 22
+        },
+        {
+          "model": "GPT 6 Luna",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "GPT 5.6 Luna",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Claude Haiku 5.5",
+          "aihot_model_id": "claude-haiku-5-5",
+          "score": 62.1,
+          "coverage": 100,
+          "rank": 25
+        },
+        {
+          "model": "Gemini 4 Argon",
+          "aihot_model_id": "gemini-4-argon",
+          "score": 71.5,
+          "coverage": 95,
+          "rank": 4
+        }
+      ]
+    },
+    "2026-11-05": {
+      "label": "今日",
+      "models": [
+        {
+          "model": "GLM-5.3-Flash",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "GLM-5.3",
+          "aihot_model_id": "glm-5-3",
+          "score": 62.8,
+          "coverage": 95,
+          "rank": 18
+        },
+        {
+          "model": "GLM-5.2",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Kimi K3.1 Pro",
+          "aihot_model_id": "kimi-k-3-1-pro",
+          "score": 68.9,
+          "coverage": 66,
+          "rank": 9
+        },
+        {
+          "model": "Kimi K3",
+          "aihot_model_id": "kimi-k-3",
+          "score": 62.7,
+          "coverage": 97,
+          "rank": 19
+        },
+        {
+          "model": "Kimi K2.7 Code",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "LongCat-2.0",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Step 5 Preview",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Beam Free",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Iceman Contributor Free",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "MiMo-V2.6-Flash",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "MiMo-V2.6-Pro",
+          "aihot_model_id": "mimo-v-2-6-pro",
+          "score": 62.3,
+          "coverage": 74,
+          "rank": 23
+        },
+        {
+          "model": "MiMo-V2.5",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "MiMo-V2.5-Pro",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "MiniMax M3.1 Flash",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "MiniMax M3",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Muse Spark 1.3 Contributor",
+          "aihot_model_id": "muse-spark-1-3",
+          "score": 64.0,
+          "coverage": 79,
+          "rank": 15
+        },
+        {
+          "model": "Muse Spark 1.2 Contributor",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Qwen3.8 Max",
+          "aihot_model_id": "qwen-3-8-max-0902",
+          "score": 62.9,
+          "coverage": 61,
+          "rank": 17
+        },
+        {
+          "model": "Qwen3.8 Flash",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Qwen3.7 Plus",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "DeepSeek V4.1 Flash",
+          "aihot_model_id": "deepseek-v-4-1-flash-1017",
+          "score": 65.5,
+          "coverage": 68,
+          "rank": 13
+        },
+        {
+          "model": "DeepSeek V4 Pro",
+          "aihot_model_id": null,
+          "score": null,
+          "coverage": null,
+          "rank": null
+        },
+        {
+          "model": "Hy4",
           "aihot_model_id": null,
           "score": null,
           "coverage": null,
