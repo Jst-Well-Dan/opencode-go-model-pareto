@@ -1038,15 +1038,14 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
             updated_quota = dict(quota_doc)
             updated_quota["source_url"] = OPENCODE_URL
             updated_quota["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
-            # 搬运：删除旧 latest，写入新日期同一份数据，label 保持 今日
+            # 保留旧日期历史，并在新日期追加一份相同数据。
             updated_quota["snapshots"] = dict(quota_doc["snapshots"])
-            old_snap = updated_quota["snapshots"].pop(latest_date)
+            old_snap = updated_quota["snapshots"][latest_date]
             # 清理其他 今日 标签
             for d, snap in list(updated_quota["snapshots"].items()):
                 if snap.get("label") == "今日":
                     snap["label"] = ""
-            old_snap["label"] = "今日"
-            updated_quota["snapshots"][snapshot_date] = old_snap
+            updated_quota["snapshots"][snapshot_date] = {**old_snap, "label": "今日"}
             tracked_rows = [row for row in quota_rows if row["requests_per_5h"] is not None]
             reference_row = max(tracked_rows, key=lambda row: row["requests_per_5h"])
             updated_quota["normalization_reference"] = {
@@ -1058,12 +1057,11 @@ def update_documents(quota_doc: dict[str, Any], aa_doc: dict[str, Any], quota_ro
             updated_aa["source_url"] = AA_API_URL
             updated_aa["last_fetched_at"] = datetime.now(timezone.utc).isoformat()
             updated_aa["snapshots"] = dict(aa_snapshots)
-            old_aa_snap = updated_aa["snapshots"].pop(latest_aa_date)
+            old_aa_snap = updated_aa["snapshots"][latest_aa_date]
             for snap in updated_aa["snapshots"].values():
                 if snap.get("label") == "今日":
                     snap["label"] = ""
-            old_aa_snap["label"] = "今日"
-            updated_aa["snapshots"][snapshot_date] = old_aa_snap
+            updated_aa["snapshots"][snapshot_date] = {**old_aa_snap, "label": "今日"}
             return updated_quota, updated_aa
 
     updated_quota = dict(quota_doc)
