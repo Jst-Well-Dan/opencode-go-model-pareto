@@ -3,7 +3,7 @@
   "source": "https://aihot.news/leaderboard",
   "source_url": "https://aihot.news/leaderboard",
   "source_note": "AIHOT 综合榜（第三方评测加权：编程 38%、科研 19%、专业办公 19%、知识问答 14%、真人盲选 10%）；官方暂无榜单 API，本项目只展示前 30 名内的分数，属个人非商业引用，附回链",
-  "last_fetched_at": "2026-11-09T14:19:19.120255+00:00",
+  "last_fetched_at": "2026-11-09T14:20:34.480398+00:00",
   "source_meta": {
     "board_updated_at": "11/09 20:05",
     "evaluations": 54,
