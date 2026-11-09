@@ -2,7 +2,7 @@
   "metric": "LMArena Agent overall score (win share, Overall Dynamic ranking)",
   "source": "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset",
   "source_url": "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=agent&split=latest",
-  "last_fetched_at": "2026-11-09T14:50:30.074653+00:00",
+  "last_fetched_at": "2026-11-09T14:54:06.147570+00:00",
   "snapshots": {
     "2026-09-27": {
       "label": "",
@@ -8561,9 +8561,9 @@
         },
         {
           "model": "Kimi K3.1 Pro",
-          "lmarena_model_id": null,
-          "rating": null,
-          "rank": null
+          "lmarena_model_id": "Kimi K3.1 Pro (Max)",
+          "rating": 0.0524,
+          "rank": 13
         },
         {
           "model": "Kimi K3",
@@ -8641,9 +8641,9 @@
         },
         {
           "model": "MiniMax M3.1 Flash",
-          "lmarena_model_id": null,
-          "rating": null,
-          "rank": null
+          "lmarena_model_id": "MiniMax-M3.1-Flash",
+          "rating": -0.0276,
+          "rank": 36
         },
         {
           "model": "MiniMax M3",
@@ -8697,9 +8697,9 @@
         },
         {
           "model": "Hy4",
-          "lmarena_model_id": null,
-          "rating": null,
-          "rank": null
+          "lmarena_model_id": "Hy4",
+          "rating": 0.0466,
+          "rank": 14
         },
         {
           "model": "Hy4 preview",
@@ -8741,9 +8741,9 @@
         },
         {
           "model": "Gemini 4 Argon",
-          "lmarena_model_id": null,
-          "rating": null,
-          "rank": null
+          "lmarena_model_id": "Gemini 4 Argon (High)",
+          "rating": 0.1083,
+          "rank": 8
         }
       ]
     }
