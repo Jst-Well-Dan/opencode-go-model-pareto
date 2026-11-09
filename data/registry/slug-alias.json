@@ -13,5 +13,6 @@
   "Gemini 3.8 Flash": "gemini-3-8-flash",
   "Gemini 3.7 Flash": "gemini-3-7-flash",
   "Qwen 3.8 Max": "qwen3-8-max",
-  "Qwen 3.8 Max 0902": "qwen3-8-max"
+  "Qwen 3.8 Max 0902": "qwen3-8-max",
+  "Hy4": "tencent-hy4"
 }

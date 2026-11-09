@@ -35,5 +35,6 @@
   "qwen3-7-max": "纯文字",
   "qwen3-7-plus": "多模态",
   "qwen3-8-flash-next": "多模态",
-  "qwen3-8-max": "多模态"
+  "qwen3-8-max": "多模态",
+  "tencent-hy4": "多模态"
 }

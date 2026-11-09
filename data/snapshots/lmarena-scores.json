@@ -2,7 +2,7 @@
   "metric": "LMArena Agent overall score (win share, Overall Dynamic ranking)",
   "source": "https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset",
   "source_url": "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&config=agent&split=latest",
-  "last_fetched_at": "2026-11-09T14:20:33.381291+00:00",
+  "last_fetched_at": "2026-11-09T14:50:30.074653+00:00",
   "snapshots": {
     "2026-09-27": {
       "label": "",

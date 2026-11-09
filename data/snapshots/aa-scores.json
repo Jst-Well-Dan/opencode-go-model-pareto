@@ -2,7 +2,7 @@
   "metric": "AA Intelligence Index",
   "source": "https://aihot.virxact.com/leaderboard/methodology",
   "source_url": "https://artificialanalysis.ai/api/v2/language/models/free",
-  "last_fetched_at": "2026-11-09T14:20:33.352672+00:00",
+  "last_fetched_at": "2026-11-09T14:50:30.031132+00:00",
   "snapshots": {
     "2026-08-17": {
       "label": "",
@@ -9254,8 +9254,9 @@
         },
         {
           "model": "Hy4",
-          "aa_model_id": null,
-          "intelligence": null
+          "aa_model_id": "tencent-hy4",
+          "intelligence": 34.6,
+          "asof": "2026-11-09"
         },
         {
           "model": "Crouton Alpha Free",
