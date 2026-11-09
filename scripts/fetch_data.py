@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Fetch OpenCode Go quotas and AA scores via official Data API, then regenerate the HTML (OC only).
 
-- 智力分：走官方 https://artificialanalysis.ai/api/v2/data/llms/models 需 x-api-key（免费 Key）
-  解析失败（接口本身异常）直接抛错，交由 GitHub Actions 记录（作业不变红、不发邮件，见 daily.yml）；
+- 智力分：走官方 https://artificialanalysis.ai/api/v2/language/models/free 需 x-api-key（免费 Key）
+  旧 /api/v2/data/llms/models 已于 2026-11-04 23:59:59 GMT 下线（410 Gone），新接口分页，逐页翻完
+  解析失败（接口本身异常）直接抛错，交由 GitHub Actions 记录（作业变红 + 发失败通知，见 daily.yml）；
   AA 免费档覆盖缩水导致的缺分不算失败：保留最后已知分值 + stale/asof 标记，前端展示为灰虚线圈且不参与帕累托
 - 配额：仍抓 https://opencode.ai/v2/docs/console/go/
 - 模态：scrape 结果缓存到 data/aa-modality-cache.json，新模型才抓取
@@ -51,7 +52,10 @@ AIHOT_MIN_ROWS = 10  # 低于此行数视为页面改版/抓取失败
 MODALITY_CACHE_PATH = ROOT / "data" / "cache" / "aa-modality-cache.json"
 GENERATOR_PATH = ROOT / "scripts" / "generate.py"
 OPENCODE_URL = "https://opencode.ai/v2/docs/console/go/"
-AA_API_URL = "https://artificialanalysis.ai/api/v2/data/llms/models"
+# 旧 /api/v2/data/* 已下线（410 Gone，2026-11-04 23:59:59 GMT）。
+# 新免费档端点：{tier, intelligence_index_version, pagination, data}，无 status 信封字段，每页最多 200 条。
+AA_API_URL = "https://artificialanalysis.ai/api/v2/language/models/free"
+AA_MAX_PAGES = 20  # 免费档当前 4 页（约 800 个模型），留足余量防翻页死循环
 # 免费档只覆盖当前主力代（2026-10 起约 90/720 个模型带 intelligence index）；
 # 低于该阈值视为接口本身异常（而非覆盖范围变化），本次不更新。
 AA_MIN_SCORED_MODELS = 20
@@ -230,33 +234,50 @@ def fetch(url: str, retries: int = 5, timeout: int = 45, headers: dict[str, str]
 
 
 def fetch_aa_via_api() -> dict[str, float]:
-    """走官方 Data API 获取智力分，失败直接抛错（由 Actions 日志记录）"""
+    """走官方 Data API 获取智力分，失败直接抛错（由 Actions 记为失败）
+
+    新 V2 接口按 page/page_size 分页（每页最多 200，page_size 传更大无效），
+    需顺着 pagination.has_more 翻完才算抓全；响应用 has_more 判断而非固定页数，
+    模型总数增长时不会静默截断。"""
     api_key = _get_api_key()
-    raw = fetch(AA_API_URL, retries=5, timeout=45, headers={"x-api-key": api_key, "Accept": "application/json"})
-    try:
-        doc = json.loads(raw)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"AA API 返回非 JSON，解析失败: {e}\nbody={raw[:1000]}")
-    if not isinstance(doc, dict) or doc.get("status") != 200:
-        raise RuntimeError(f"AA API 返回异常 status: {doc.get('status')} body={raw[:1000]}")
-    data = doc.get("data")
-    if not isinstance(data, list) or not data:
-        raise RuntimeError(f"AA API data 为空或非数组 body={raw[:1000]}")
+    headers = {"x-api-key": api_key, "Accept": "application/json"}
     scores: dict[str, float] = {}
-    for item in data:
-        slug = item.get("slug")
-        evals = item.get("evaluations") or {}
-        intel = evals.get("artificial_analysis_intelligence_index")
-        if not slug or intel is None:
-            continue
+    total_rows = 0
+    page = 1
+    while page <= AA_MAX_PAGES:
+        raw = fetch(f"{AA_API_URL}?page={page}", retries=5, timeout=45, headers=headers)
         try:
-            score = float(intel)
-        except (TypeError, ValueError):
-            continue
-        # API 的 slug 即为 aa_model_id（如 glm-5-3），直接可用
-        scores[slug] = score
+            doc = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"AA API 返回非 JSON（page={page}），解析失败: {e}\nbody={raw[:1000]}")
+        if not isinstance(doc, dict):
+            raise RuntimeError(f"AA API 返回非对象（page={page}）body={raw[:1000]}")
+        data = doc.get("data")
+        if not isinstance(data, list) or not data:
+            # 首页就空说明接口异常；后续页空说明已翻到头
+            if page == 1:
+                raise RuntimeError(f"AA API data 为空或非数组 body={raw[:1000]}")
+            break
+        total_rows += len(data)
+        for item in data:
+            slug = item.get("slug")
+            evals = item.get("evaluations") or {}
+            intel = evals.get("artificial_analysis_intelligence_index")
+            if not slug or intel is None:
+                continue
+            try:
+                score = float(intel)
+            except (TypeError, ValueError):
+                continue
+            # API 的 slug 即为 aa_model_id（如 glm-5-3），直接可用
+            scores[slug] = score
+        if not (doc.get("pagination") or {}).get("has_more"):
+            break
+        page += 1
+        time.sleep(0.3)  # 免费档 100 次/日，翻页间稍作间隔
     if not scores:
-        raise RuntimeError(f"AA API 解析后得分为空，已抓 {len(data)} 条但无 intelligence_index")
+        raise RuntimeError(f"AA API 解析后得分为空，已抓 {total_rows} 条但无 intelligence_index")
+    print(f"AA API: {page} 页 / {total_rows} 个模型，{len(scores)} 个带 intelligence index")
     return scores
 
 
@@ -1183,7 +1204,7 @@ def main() -> None:
     print(f"Fetching {OPENCODE_URL}")
     opencode_source = fetch(OPENCODE_URL)
     quota_rows = parse_opencode_quotas(opencode_source)
-    print(f"Fetching {AA_API_URL} (official Data API, free key)")
+    print(f"Fetching {AA_API_URL} (official Data API, free key, paginated)")
     aa_scores = fetch_aa_via_api()
     print(f"Parsed {len(quota_rows)} quota rows and {len(aa_scores)} AA scores (official API)")
 

@@ -37,20 +37,12 @@ jobs:
           retry_wait_seconds: 60
           retry_on: error
           command: python scripts/fetch_data.py
-        # 官方 Data API 需免费 Key（secrets.ARTIFICIAL_ANALYSIS_API_KEY），解析失败抛错
-        # 失败不再让作业变红：continue-on-error + 下一步丢弃半成品，作业保持成功，
-        # 因此 GitHub 不会发出 Actions 失败通知邮件。失败信息仍在日志里（::warning::）。
-        continue-on-error: true
-
-      - name: Discard partial changes on fetch failure
-        if: steps.fetch.outcome == 'failure'
-        run: |
-          echo "::warning::数据抓取失败，本次跳过更新（作业保持成功，不发送失败邮件）"
-          git checkout -- . || true
-          git clean -fdq data index.html || true
+        # 官方 Data API 需免费 Key（secrets.ARTIFICIAL_ANALYSIS_API_KEY），解析失败抛错。
+        # 失败就让作业变红并发通知：2026-11-05 旧接口下线后，原先用
+        # continue-on-error 吞掉错误，导致连续一周"绿色停更"没人发现。
+        # 失败时后续提交步骤不会执行，工作区改动随 runner 丢弃，不污染仓库。
 
       - name: Commit and push if changed
-        if: steps.fetch.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
