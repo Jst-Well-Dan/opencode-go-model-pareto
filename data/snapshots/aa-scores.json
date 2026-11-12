@@ -2,7 +2,7 @@
   "metric": "AA Intelligence Index",
   "source": "https://aihot.virxact.com/leaderboard/methodology",
   "source_url": "https://artificialanalysis.ai/api/v2/language/models/free",
-  "last_fetched_at": "2026-11-11T22:55:43.420660+00:00",
+  "last_fetched_at": "2026-11-12T22:24:41.890169+00:00",
   "snapshots": {
     "2026-08-17": {
       "label": "",
@@ -9937,6 +9937,338 @@
       ]
     },
     "2026-11-12": {
+      "label": "",
+      "models": [
+        {
+          "model": "Grok 4.5",
+          "aa_model_id": "grok-4-5",
+          "intelligence": 38.8,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "GPT 5.6 Luna",
+          "aa_model_id": "gpt-5-6-luna",
+          "intelligence": 23.8,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "GLM-5.3",
+          "aa_model_id": "glm-5-3",
+          "intelligence": 31.7,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "GLM-5.2",
+          "aa_model_id": "glm-5-2",
+          "intelligence": 33.7,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "GLM-5.1",
+          "aa_model_id": "glm-5-1",
+          "intelligence": 26.1,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Kimi K3",
+          "aa_model_id": "kimi-k3",
+          "intelligence": 43.6,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Kimi K2.7 Code",
+          "aa_model_id": "kimi-k2-7-code",
+          "intelligence": 25.8,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Kimi K2.6",
+          "aa_model_id": "kimi-k2-6",
+          "intelligence": 27.0,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "MiMo-V2.5",
+          "aa_model_id": "mimo-v2-5-0424",
+          "intelligence": 21.8,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "MiMo-V2.5-Pro",
+          "aa_model_id": "mimo-v2-5-pro",
+          "intelligence": 26.0,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "MiniMax M3",
+          "aa_model_id": "minimax-m3",
+          "intelligence": 18.9,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "MiniMax M2.7",
+          "aa_model_id": "minimax-m2-7",
+          "intelligence": 22.8,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Muse Spark 1.2 Contributor",
+          "aa_model_id": "muse-spark-1-2",
+          "intelligence": 39.6,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Qwen3.8 Max",
+          "aa_model_id": "qwen3-8-max",
+          "intelligence": 33.7,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Qwen3.7 Max",
+          "aa_model_id": "qwen3-7-max",
+          "intelligence": 29.5,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Qwen3.7 Plus",
+          "aa_model_id": "qwen3-7-plus",
+          "intelligence": 25.2,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Qwen3.6 Plus",
+          "aa_model_id": "qwen3-6-plus",
+          "intelligence": 27.0,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "DeepSeek V4 Pro",
+          "aa_model_id": "deepseek-v4-pro",
+          "intelligence": 23.1,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "DeepSeek V4 Flash",
+          "aa_model_id": "deepseek-v4-flash",
+          "intelligence": 34.3,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Hy3",
+          "aa_model_id": "hy3",
+          "intelligence": 25.3,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "DeepSeek V4 Flash Vision Exp",
+          "aa_model_id": "deepseek-v4-flash-vision",
+          "intelligence": 34.8,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Ox Alpha Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "LongCat-2.0",
+          "aa_model_id": "longcat-2-0",
+          "intelligence": 19.1,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "Grok 4.6",
+          "aa_model_id": "grok-4-6",
+          "intelligence": 44.3,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "GLM-5.3-Flash",
+          "aa_model_id": "glm-5-3-flash",
+          "intelligence": 27.8,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Qwen3.8 Flash",
+          "aa_model_id": "qwen3-8-flash-next",
+          "intelligence": 28.6,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Hy4 preview",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Muse Spark 1.3 Contributor",
+          "aa_model_id": "muse-spark-1-3",
+          "intelligence": 36.6,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Omen Alpha",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Gemini 3.8 Flash",
+          "aa_model_id": "gemini-3-8-flash",
+          "intelligence": 30.8,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Gemini 3.7 Flash",
+          "aa_model_id": "gemini-3-7-flash",
+          "intelligence": 39.1,
+          "stale": true,
+          "asof": "2026-10-28"
+        },
+        {
+          "model": "DeepSeek V4.1 Flash",
+          "aa_model_id": "deepseek-v4-1-flash-1017",
+          "intelligence": 32.6,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Union Alpha Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "MiMo-V2.6-Flash",
+          "aa_model_id": "mimo-v2-6-flash",
+          "intelligence": 26.7,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "MiMo-V2.6-Pro",
+          "aa_model_id": "mimo-v2-6-pro",
+          "intelligence": 29.9,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Grok 4.7",
+          "aa_model_id": "grok-4-7",
+          "intelligence": 35.5,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Space Bunny Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "GPT 6 Luna",
+          "aa_model_id": "gpt-6-luna",
+          "intelligence": 27.9,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "LongCat 2.5 Preview Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Space Bunny",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Claude Haiku 5.5",
+          "aa_model_id": "claude-haiku-5-5",
+          "intelligence": 36.5,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Step 5 Preview Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Cat Jam Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Gemini 4 Argon Contributor",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Step 5 Preview",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Beam Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "MiniMax M3.1 Flash Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "MiniMax M3.1 Flash",
+          "aa_model_id": "minimax-m3-1-flash",
+          "intelligence": 29.1,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Kimi K3.1 Pro",
+          "aa_model_id": "kimi-k3-1-pro",
+          "intelligence": 46.5,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Gemini 4 Argon",
+          "aa_model_id": "gemini-4-argon",
+          "intelligence": 50.4,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Iceman Contributor Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "Hy4",
+          "aa_model_id": "tencent-hy4",
+          "intelligence": 34.6,
+          "asof": "2026-11-12"
+        },
+        {
+          "model": "Crouton Alpha Free",
+          "aa_model_id": null,
+          "intelligence": null
+        },
+        {
+          "model": "LongCat 2.5 Free",
+          "aa_model_id": null,
+          "intelligence": null
+        }
+      ]
+    },
+    "2026-11-13": {
       "label": "今日",
       "models": [
         {
