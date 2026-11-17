@@ -6,6 +6,8 @@
 
 **https://jst-well-dan.github.io/opencode-go-model-pareto/**
 
+套餐对比页（已归档冻结，2026-11-17 快照）：**https://jst-well-dan.github.io/opencode-go-model-pareto/archive/opendesign-pareto.html**
+
 
 无需克隆，直接打开即可切换日期（时间轴滑块 / 下拉）、切换对数/线性刻度，所有数据与图标已内联，完全支持离线可用。
 
@@ -17,7 +19,11 @@
 .
 ├── index.html                           # 成品主图（GitHub Pages 入口，仅 OpenCode Go 单页）
 ├── goat-compare-archive.html            # 存档冻结页（Command GOAT + 对比，已停止更新）
-├── archive/                             # 归档的 GOAT 相关代码（备用，不参与每日任务）
+├── archive/                             # 归档代码（不参与每日任务）
+│   ├── opendesign-pareto.html           # 套餐对比页冻结快照（2026-11-17）
+│   ├── plan-pareto.template.html        # 对比页模板
+│   ├── fetch_plans.py / generate_plan_pareto.py
+│   └── plans.json                       # 对比页数据快照
 ├── data/
 │   ├── snapshots/                       # 时序快照（quota/aa；goat 已冻结不再新增）
 │   ├── registry/                        # 注册表（model-meta/icons/slug-alias/crosswalk/curated）
@@ -71,7 +77,30 @@ python scripts/generate.py --domain pinned --output compare-pinned.html      # �
 python scripts/generate.py --domain adaptive --output compare-adaptive.html  # 每日自适应对照版
 ```
 
-### 2. 手动维护与新增模型
+### 2. 套餐对比页（已归档冻结，2026-11-17）
+
+`archive/opendesign-pareto.html` 是**一次性快照**，回答两个问题：$10 档 OpenDesign 与 OpenCode 怎么选，以及 OpenDesign Go Pro（$100）在帕累托意义下买到什么。
+2026-11-17 起从每日任务移出并入 `archive/`，不再自动更新（与 `goat-compare-archive.html` 同样处理）。
+
+需要手动刷新时（页面、数据、模板都在 `archive/` 内，图标仍读 `data/registry/icons.json`）：
+
+```bash
+python archive/fetch_plans.py              # 抓数据 → archive/plans.json
+python archive/fetch_plans.py --generate   # 抓数据 + 重建 archive/opendesign-pareto.html
+python archive/generate_plan_pareto.py     # 只用现有 archive/plans.json 重建 HTML
+```
+
+**口径**（与主图的「相对配额成本」不同，两页不可直接比横轴）：
+
+- **横轴 = 有效单价 `$/百万 token`** = `(3×输入价 + 1×输出价)/4 × 套餐月费 ÷ 该模型每月额度`。含义：只跑这一个模型时，每百万 token 实际花多少钱。
+- **每月额度**取官方数字：OpenCode 用 `/inference/go/v1/models` 的 `go.monthly_usage.go`；OpenDesign 用定价页「Coding Plan 使用额度」表里按套餐分列的 `$`。旗舰模型那一档是 `$120/月` 的**共享池**，不是每模型独占额度，页面上用 `★` 标出。
+- **额度倍率不二次修正**：官方额度表的 `$` 已折进倍率（MiMo `$15` = 标准 `$60` 的 1/4，DeepSeek V4.1 Flash `$120` = 2 倍），再乘一遍会重复计算。
+- **帕累托前沿** = 找不到更便宜且更聪明的点。`stale: true` 的停更分只画灰虚线圈，不参与前沿。
+- **已知不成立处**：额度池是共享的（不能同时吃满每个模型的额度）；限流窗口不等价（OC 5h=20%/周=50%，OD Go 5h=$18/7d=$55，Go Pro 无 5h）；OC 的 DeepSeek V4.1 Flash / V4 Pro 工作日 UTC 01–04、06–10 是 2× 计价，图上按谷时价算；OpenDesign 的「限时谷价」与 Eco 0.27× 促销未入图。
+
+套餐价格与窗口规则硬编码在 `archive/fetch_plans.py` 的 `PLANS` 字典里（两个定价页的套餐卡是客户端渲染，抓取成本高于收益），**改价时手动同步这里**。
+
+### 3. 手动维护与新增模型
 
 1. **更新快照**：在 `data/snapshots/quota-snapshots.json` 新增或修改日期快照（每个模型配置 `requests_per_5h` / `requests_per_week` / `requests_per_month`）。
 2. **更新评分**：在 `data/snapshots/aa-scores.json` 对应日期快照中修改或补充模型的 `intelligence`；时间轴会同步显示各日期的评分标准。
@@ -147,6 +176,24 @@ python scripts/generate.py --domain adaptive --output compare-adaptive.html  # �
   }
   ```
   > 字段以 `model` 为主键；旧版扁平 `models` 结构已迁移为日期快照。
+- **`data/snapshots/plans.json`**（套餐对比页数据：`plans` 存三档套餐的价格/额度/窗口，`rows` 按套餐存模型行）
+  ```json
+  {
+    "asof": "2026-11-17",
+    "aa_index_version": 5,
+    "blend": "3 份输入 : 1 份输出（编码 agent 典型比例）",
+    "plans": {
+      "od-go": { "name": "OpenDesign Go", "price": 10.0, "coding_pool": 220.0, "flagship_pool": 0.0 }
+    },
+    "rows": {
+      "od-go": [
+        { "name": "GLM-5.3 Flash", "list_in": 0.075, "list_out": 0.25,
+          "allowance": 60.0, "pool": "coding", "aa_score": 27.8, "aa_stale": false }
+      ]
+    }
+  }
+  ```
+  > `allowance` 是「只用该模型一个月能消耗多少列表价用量」。`pool: flagship` 的行共享 `$120/月` 的池，不是独占额度。`stale: true` 的 `aa_score` 不参与帕累托。
 
 ---
 
