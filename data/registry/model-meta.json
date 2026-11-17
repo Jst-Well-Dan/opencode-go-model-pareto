@@ -123,6 +123,10 @@
     "brand": "hunyuan",
     "modality": "多模态"
   },
+  "Hy4 flash Free": {
+    "brand": "hunyuan",
+    "modality": "未知"
+  },
   "Hy4 preview": {
     "brand": "hunyuan",
     "modality": "纯文字"
@@ -284,6 +288,10 @@
     "modality": "多模态"
   },
   "Qwen3.8 Max": {
+    "brand": "qwen",
+    "modality": "多模态"
+  },
+  "Qwen4 Max": {
     "brand": "qwen",
     "modality": "多模态"
   },
